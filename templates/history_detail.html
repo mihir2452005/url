@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <a href="{{ url_for('history') }}" class="btn btn-secondary mb-3">← Back to History</a>
+        <h2>Analysis Details</h2>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">URL Analysis from {{ entry.timestamp[:19].replace('T', ' ') }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <p class="mb-2 flex-grow-1">
+                        <strong>URL:</strong> 
+                        <code class="d-inline-block text-truncate" style="max-width: calc(100% - 100px);">{{ entry.url }}</code>
+                    </p>
+                    <button class="btn btn-sm btn-outline-secondary ms-2" 
+                            onclick="copyToClipboard('{{ entry.url }}')" 
+                            title="Copy URL to clipboard">
+                        📋 Copy URL
+                    </button>
+                </div>
+                <p><strong>Verdict:</strong> 
+                    <span class="badge bg-{{ 'success' if entry.verdict == 'Safe' else 'warning' if entry.verdict == 'Suspicious' else 'danger' }} fs-6">
+                        {{ entry.verdict }}
+                    </span>
+                </p>
+                <p><strong>Risk Score:</strong> {{ entry.score|round(1) }}/100 ({{ entry.classification }})</p>
+                <p><strong>Confidence:</strong> {{ entry.confidence|round(1) }}%</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if chart_data %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Risk Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="riskChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const breakdownKeys = {{ entry.breakdown.keys()|list|tojson | safe }};
+const breakdownData = {{ chart_data | tojson | safe }};
+const ctx = document.getElementById('riskChart')?.getContext('2d');
+if (ctx && typeof Chart !== 'undefined') {
+    const chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: breakdownKeys,
+            datasets: [{
+                data: breakdownData,
+                backgroundColor: ['#28a745', '#ffc107', '#fd7e14', '#dc3545', '#6c757d']
+            }]
+        },
+        options: { 
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+}
+</script>
+{% endif %}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Detailed Risk Analysis</h5>
+            </div>
+            <div class="card-body">
+                {% if entry.risk_summary %}
+                    {% for category, data in entry.risk_summary.items() %}
+                    <details class="mt-2" {% if data.score > 0 %}open{% endif %}>
+                        <summary class="fw-bold">
+                            {{ category.title() }}: 
+                            <span class="badge bg-{{ 'success' if data.score < 30 else 'warning' if data.score < 60 else 'danger' }}">
+                                {{ data.score|round(1) }}
+                            </span>
+                        </summary>
+                        <ul class="mt-2">
+                            {% for detail in data.details %}
+                            <li>
+                                <strong>{{ detail.name }}</strong> (+{{ detail.weight }}): 
+                                {{ detail.explanation }}
+                            </li>
+                            {% endfor %}
+                            {% if not data.details %}
+                            <li class="text-muted">No risks detected in this category</li>
+                            {% endif %}
+                        </ul>
+                    </details>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No detailed risk analysis available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-12">
+        <form method="POST" action="{{ url_for('delete_history_entry', entry_id=entry.id) }}" 
+              onsubmit="return confirm('Are you sure you want to delete this entry? This cannot be undone.');">
+            <button type="submit" class="btn btn-danger">Delete This Entry</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

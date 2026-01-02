@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h2>Analyze URL</h2>
+        <form method="POST" onsubmit="const btn = this.querySelector('button[type=submit]'); btn.disabled=true; btn.innerHTML='<span class=\'spinner-border spinner-border-sm\' role=\'status\' aria-hidden=\'true\'></span> Analyzing...';">
+            <div class="mb-3">
+                <label for="url" class="form-label">Enter URL:</label>
+                <input type="url" class="form-control" id="url" name="url" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Analyze</button>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('url').value='';">Clear</button>
+            <a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
+        </form>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-title">About This Tool</h6>
+                <p class="small mb-0">Advanced local URL threat detection using multi-layer analysis without external APIs.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if result %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="alert alert-{{ 'success' if result.score < 30 else 'warning' if result.score < 70 else 'danger' }}">
+            <h4>Risk Score: {{ result.score }}/100 ({{ result.classification }})</h4>
+            {% if result.verdict %}
+                <p><strong>Verdict:</strong> {{ result.verdict }} | <strong>Confidence:</strong> {{ result.confidence|round(1) }}%</p>
+            {% endif %}
+            {% if result.error %}
+                <p class="alert-heading">{{ result.error }}</p>
+            {% else %}
+                <canvas id="riskChart" width="400" height="200"></canvas>
+                <div id="breakdown">
+                    {% for cat, data in result.breakdown.items() %}
+                    <details class="mt-2">
+                        <summary>{{ cat.title() }}: {{ data.weighted|round(1) }} (Details)</summary>
+                        <ul>
+                            {% for name, wt, expl in data.details %}
+                            <li><strong>{{ name }}</strong> (+{{ wt }}): {{ expl }}</li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script>
+    {% if result and result.breakdown %}
+    const breakdownKeys = {{ result.breakdown.keys()|list|tojson | safe }};
+    const breakdownData = {{ chart_data | tojson | safe }};
+    {% endif %}
+    const ctx = document.getElementById('riskChart')?.getContext('2d');
+    if (ctx && typeof breakdownKeys !== 'undefined' && typeof Chart !== 'undefined') {
+        const chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: breakdownKeys,
+                datasets: [{
+                    data: breakdownData,
+                    backgroundColor: ['#28a745', '#ffc107', '#fd7e14', '#dc3545']
+                }]
+            },
+            options: { 
+                responsive: true,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+</script>
+{% endif %}
+{% endblock %}

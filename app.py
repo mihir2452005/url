@@ -1,0 +1,277 @@
+from flask import Flask, render_template, request, jsonify, redirect, url_for
+from urllib.parse import urlparse
+import threading
+import time
+from modules.lexical import lexical_risk
+from modules.domain import domain_risk
+from modules.ssl_checker import ssl_risk
+from modules.content_analyzer import content_risk
+from modules.scorer import compute_score
+from modules.local_detection import LocalUrlDetector
+from modules.history_storage import AnalysisHistoryStorage
+from modules.advanced_features import perform_advanced_analysis
+from config import Config
+
+app = Flask(__name__)
+app.config.from_object(Config)
+
+# Initialize Local AI Detector (loads models once)
+ai_detector = LocalUrlDetector()
+
+# Initialize persistent history storage
+history_storage = AnalysisHistoryStorage()
+
+
+def derive_verdict(score, classification, risks):
+    """Derive a VirusTotal-like verdict (Safe, Suspicious, Phishing, Malicious)."""
+    phishing_names = {
+        'Brand Mimicry',
+        'Typosquatting',
+        'Typosquatting (Fuzzy)',
+        'Leetspeak Typosquatting',
+        'Homograph Attack',
+        'Punycode/IDN',
+        'Social Engineering Lure',
+        'External Form Action',
+        'Insecure Password Field',
+        'Hidden Password Field',
+        'AI Pattern Match',
+        'URL Shortener',
+        'Excessive Subdomains',
+        'High Hex Encoding',
+        'IP Address URL',
+        # Advanced feature phishing indicators
+        'Advanced Homograph Attack',
+        'Brand Impersonation',
+        'Multiple Urgency Keywords',
+        'Credential Handling in Script',
+        'Suspicious Hidden Fields',
+        'Phishing Pattern Cluster',
+        'External POST Form',
+        'Misleading Page Title'
+    }
+
+    phishing_flag = False
+    for cat in ('lexical', 'content', 'ai_analysis', 'domain', 
+                'advanced_lexical', 'advanced_content', 'advanced_javascript', 
+                'advanced_heuristic', 'advanced_behavioral'):
+        cat_result = risks.get(cat)
+        if not cat_result:
+            continue
+        _, details = cat_result
+        for name, _, _ in details:
+            if name in phishing_names:
+                phishing_flag = True
+                break
+        if phishing_flag:
+            break
+
+    if classification == 'Safe':
+        return 'Safe'
+    if classification == 'Suspicious':
+        return 'Suspicious'
+    # classification == 'Malicious'
+    if phishing_flag:
+        return 'Phishing'
+    return 'Malicious'
+
+
+def derive_confidence(score, classification, risks):
+    """Confidence heuristic based on score, base classification, and number of detectors that fired."""
+    engines_triggered = sum(1 for v in risks.values() if isinstance(v, tuple) and v[0] > 0)
+
+    if classification == 'Safe':
+        # Lower risk + fewer engines -> higher confidence in safety
+        base = max(0.0, min(100.0, 100.0 - score))
+        penalty = 5.0 * max(0, engines_triggered - 1)
+        return max(0.0, base - penalty)
+
+    if classification == 'Suspicious':
+        # Suspicious is inherently uncertain but multiple engines raise confidence somewhat
+        return float(min(90.0, 40.0 + 10.0 * engines_triggered))
+
+    # Malicious / Phishing: higher score + more agreeing engines => higher confidence
+    return float(min(100.0, max(score, 50.0) + 5.0 * max(0, engines_triggered - 1)))
+
+def run_analysis(url):
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        return {'error': 'Invalid URL'}, 400
+    
+    # CRITICAL: Early exit for trusted domains to prevent false positives
+    domain = parsed.netloc.lower()
+    if domain in [d.lower() for d in Config.TRUSTED_DOMAINS]:
+        return {
+            'score': 0,
+            'classification': 'Safe',
+            'verdict': 'Safe',
+            'confidence': 100.0,
+            'breakdown': {
+                'trusted_domain': {
+                    'score': 0,
+                    'details': [('Trusted Domain', 0, 'Domain is in verified whitelist of legitimate sites')],
+                    'weighted': 0
+                }
+            },
+            'risks': {
+                'trusted_domain': (0, [('Trusted Domain', 0, 'Domain is in verified whitelist of legitimate sites')])
+            }
+        }
+    
+    risks = {}
+    threads = []
+    soup_object = None
+    
+    def thread_lexical():
+        risks['lexical'] = lexical_risk(url)
+    
+    def thread_domain():
+        risks['domain'] = domain_risk(parsed.netloc)
+    
+    def thread_ssl():
+        risks['ssl'] = ssl_risk(url)
+    
+    def thread_content():
+        # Capture soup object for advanced analysis
+        nonlocal soup_object
+        result = content_risk(url)
+        risks['content'] = result
+        # Try to get soup object from content_analyzer if available
+        try:
+            from modules.content_analyzer import get_last_soup
+            soup_object = get_last_soup()
+        except:
+            pass
+    
+    def thread_ai():
+        risks['ai_analysis'] = ai_detector.analyze(url)
+    
+    for func in [thread_lexical, thread_domain, thread_ssl, thread_content, thread_ai]:
+        t = threading.Thread(target=func)
+        t.start()
+        threads.append(t)
+    
+    for t in threads:
+        t.join(timeout=app.config['ANALYSIS_TIMEOUT'])
+    
+    # Run advanced feature analysis
+    try:
+        advanced_results = perform_advanced_analysis(url, soup_object, risks)
+        # Merge advanced results into main risks
+        risks.update(advanced_results)
+    except Exception as e:
+        # If advanced analysis fails, continue with basic analysis
+        risks['advanced_error'] = (0, [('Advanced Analysis Skipped', 0, str(e)[:50])])
+    
+    score, classification, breakdown = compute_score(risks)
+    verdict = derive_verdict(score, classification, risks)
+    confidence = derive_confidence(score, classification, risks)
+    return {
+        'score': score,
+        'classification': classification,
+        'verdict': verdict,
+        'confidence': confidence,
+        'breakdown': breakdown,
+        'risks': risks
+    }
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    chart_data = []
+    if request.method == 'POST':
+        url = request.form['url']
+        result = run_analysis(url)
+        if isinstance(result, tuple):
+            result = result[0]  # Handle error tuple ({'error':...}, 400)
+        else:
+            # Save to history
+            history_storage.add_analysis(url, result)
+            chart_data = [item['weighted'] for item in result['breakdown'].values()]
+        return render_template('index.html', result=result, url=url, chart_data=chart_data)
+    return render_template('index.html', chart_data=chart_data)
+
+@app.route('/analyze', methods=['POST'])
+def api_analyze():
+    url = request.json['url']
+    result = run_analysis(url)
+    if not isinstance(result, tuple):  # Not an error
+        history_storage.add_analysis(url, result)
+    return jsonify(result)
+
+@app.route('/history')
+def history():
+    """Display analysis history page."""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    all_history = history_storage.get_all_history()
+    total = len(all_history)
+    total_pages = (total + per_page - 1) // per_page
+    
+    start = (page - 1) * per_page
+    end = start + per_page
+    page_history = all_history[start:end]
+    
+    stats = history_storage.get_statistics()
+    
+    return render_template('history.html', 
+                          history=page_history, 
+                          stats=stats,
+                          page=page,
+                          total_pages=total_pages,
+                          total=total)
+
+@app.route('/history/<entry_id>')
+def history_detail(entry_id):
+    """Display detailed view of a specific analysis."""
+    entry = history_storage.get_by_id(entry_id)
+    if not entry:
+        return render_template('error.html', message='Analysis not found'), 404
+    
+    # Prepare chart data
+    chart_data = []
+    if 'breakdown' in entry:
+        chart_data = [item.get('weighted', 0) for item in entry['breakdown'].values()]
+    
+    return render_template('history_detail.html', entry=entry, chart_data=chart_data)
+
+@app.route('/history/search')
+def history_search():
+    """Search history with filters."""
+    query = request.args.get('q', '')
+    verdict = request.args.get('verdict', None)
+    min_score = request.args.get('min_score', type=float)
+    max_score = request.args.get('max_score', type=float)
+    
+    results = history_storage.search_history(
+        query=query if query else None,
+        verdict=verdict if verdict else None,
+        min_score=min_score,
+        max_score=max_score
+    )
+    
+    stats = history_storage.get_statistics()
+    
+    return render_template('history.html', 
+                          history=results, 
+                          stats=stats,
+                          search_query=query,
+                          search_verdict=verdict,
+                          page=1,
+                          total_pages=1,
+                          total=len(results))
+
+@app.route('/history/clear', methods=['POST'])
+def clear_history():
+    """Clear all analysis history."""
+    history_storage.clear_history()
+    return redirect(url_for('history'))
+
+@app.route('/history/delete/<entry_id>', methods=['POST'])
+def delete_history_entry(entry_id):
+    """Delete a specific history entry."""
+    history_storage.delete_entry(entry_id)
+    return redirect(url_for('history'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
