@@ -10,6 +10,7 @@ from modules.scorer import compute_score
 from modules.local_detection import LocalUrlDetector
 from modules.history_storage import AnalysisHistoryStorage
 from modules.advanced_features import perform_advanced_analysis
+from modules.layered_analysis import LayeredUrlAnalyzer
 from config import Config
 
 app = Flask(__name__)
@@ -17,6 +18,9 @@ app.config.from_object(Config)
 
 # Initialize Local AI Detector (loads models once)
 ai_detector = LocalUrlDetector()
+
+# Initialize Layered URL Analyzer
+layered_analyzer = LayeredUrlAnalyzer()
 
 # Initialize persistent history storage
 history_storage = AnalysisHistoryStorage()
@@ -93,7 +97,7 @@ def derive_confidence(score, classification, risks):
     # Malicious / Phishing: higher score + more agreeing engines => higher confidence
     return float(min(100.0, max(score, 50.0) + 5.0 * max(0, engines_triggered - 1)))
 
-def run_analysis(url):
+def run_analysis(url, include_layered_analysis=False):
     parsed = urlparse(url)
     if not parsed.scheme or not parsed.netloc:
         return {'error': 'Invalid URL'}, 400
@@ -101,7 +105,7 @@ def run_analysis(url):
     # CRITICAL: Early exit for trusted domains to prevent false positives
     domain = parsed.netloc.lower()
     if domain in [d.lower() for d in Config.TRUSTED_DOMAINS]:
-        return {
+        result = {
             'score': 0,
             'classification': 'Safe',
             'verdict': 'Safe',
@@ -117,6 +121,13 @@ def run_analysis(url):
                 'trusted_domain': (0, [('Trusted Domain', 0, 'Domain is in verified whitelist of legitimate sites')])
             }
         }
+        
+        # Include layered analysis if requested
+        if include_layered_analysis:
+            layered_result = layered_analyzer.analyze_url(url)
+            result['layered_analysis'] = layered_result
+        
+        return result
     
     risks = {}
     threads = []
@@ -166,7 +177,8 @@ def run_analysis(url):
     score, classification, breakdown = compute_score(risks)
     verdict = derive_verdict(score, classification, risks)
     confidence = derive_confidence(score, classification, risks)
-    return {
+    
+    result = {
         'score': score,
         'classification': classification,
         'verdict': verdict,
@@ -174,26 +186,35 @@ def run_analysis(url):
         'breakdown': breakdown,
         'risks': risks
     }
+    
+    # Include layered analysis if requested
+    if include_layered_analysis:
+        layered_result = layered_analyzer.analyze_url(url)
+        result['layered_analysis'] = layered_result
+    
+    return result
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     chart_data = []
     if request.method == 'POST':
         url = request.form['url']
-        result = run_analysis(url)
+        include_layered = 'include_layered_analysis' in request.form  # Check if checkbox is present
+        result = run_analysis(url, include_layered_analysis=include_layered)
         if isinstance(result, tuple):
             result = result[0]  # Handle error tuple ({'error':...}, 400)
         else:
             # Save to history
             history_storage.add_analysis(url, result)
             chart_data = [item['weighted'] for item in result['breakdown'].values()]
-        return render_template('index.html', result=result, url=url, chart_data=chart_data)
+        return render_template('index.html', result=result, url=url, chart_data=chart_data, include_layered_analysis=include_layered)
     return render_template('index.html', chart_data=chart_data)
 
 @app.route('/analyze', methods=['POST'])
 def api_analyze():
     url = request.json['url']
-    result = run_analysis(url)
+    include_layered = request.json.get('include_layered_analysis', False)
+    result = run_analysis(url, include_layered_analysis=include_layered)
     if not isinstance(result, tuple):  # Not an error
         history_storage.add_analysis(url, result)
     return jsonify(result)
