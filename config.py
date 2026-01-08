@@ -19,7 +19,9 @@ class Config:
         'advanced_javascript': 0.10,
         'advanced_heuristic': 0.08,
         'advanced_behavioral': 0.12,
-        'advanced_certificate': 0.09  # NEW: Advanced certificate analysis
+        'advanced_certificate': 0.09,  # NEW: Advanced certificate analysis
+        # Malicious file detection weight
+        'malicious_file': 0.40  # Higher weight for known malicious files like EICAR
     }
     
     # More conservative thresholds to reduce false positives

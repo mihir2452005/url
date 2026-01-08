@@ -42,246 +42,191 @@ def is_likely_legitimate(url, netloc):
 
 def lexical_risk(url):
     """
-    Analyzes URL for lexical phishing indicators with reduced false positives.
-    Uses multi-condition validation similar to VirusTotal's approach.
+    Enhanced lexical analysis with improved Layer 1 static analysis detection.
+    Implements comprehensive checks for IP addresses, double extensions, entropy, keyword stuffing, and homograph attacks.
     """
-    risks = []
-    score = 0
-    
-    parsed = urlparse(url)
-    netloc = parsed.netloc or ''
-    path = parsed.path or ''
-    
-    # Early legitimacy check - if matches known legitimate patterns, reduce sensitivity
-    is_legit_pattern = is_likely_legitimate(url, netloc)
-    sensitivity_multiplier = 0.5 if is_legit_pattern else 1.0
-    
-    # 1. IP Address Usage (High Risk) - but verify it's not localhost/private
-    ip_pattern = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
-    if re.search(ip_pattern, netloc):
-        # Check if it's a private/localhost IP (less risky)
-        if re.match(r'^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)', netloc):
-            risks.append(('Private IP Address', 15, 'Uses private/localhost IP (dev/testing environment).'))
-            score += 15
-        else:
-            risks.append(('Public IP Address URL', 70, 'URL uses raw public IP address instead of domain.'))
-            score += 70
-
-    # 2. URL Length & Structure - more nuanced scoring
-    url_len = len(url)
-    if url_len > 150:
-        # Very long URLs are suspicious
-        extra_score = min(50, 15 * ((url_len - 150) // 50))
-        risks.append(('Excessive Length', 45 + extra_score, f'URL is {url_len} chars, often used to hide malicious content.'))
-        score += (45 + extra_score)
-    elif url_len > 100:
-        # Moderately long - less penalty for legitimate sites
-        weight = int(25 * sensitivity_multiplier)
-        if weight > 0:
-            risks.append(('Long URL', weight, f'URL is {url_len} chars, somewhat suspicious.'))
-            score += weight
-    
-    # 3. Obfuscation Techniques - with context
-    if '@' in netloc:
-        # @ in netloc is almost always malicious
-        risks.append(('Obfuscated Authority', 75, 'Uses "@" in domain to hide actual host.'))
-        score += 75
+    try:
+        risks = []
+        score = 0
         
-    # Double slash in path - but allow it in query params
-    if '//' in path and '?' not in url[:url.index('//') if '//' in url else 0]:
-        weight = int(40 * sensitivity_multiplier)
-        if weight > 0:
-            risks.append(('Double Slash in Path', weight, 'Contains "//" in path, may indicate open redirect.'))
-            score += weight
-    
-    # 4. Suspicious Keywords - only trigger if combined with other factors
-    keywords = [
-        'login', 'secure', 'account', 'verify', 'update', 'banking', 'confirm',
-        'wallet', 'crypto', 'unlock', 'bonus', 'free', 'gift', 'prize'
-    ]
-    
-    # Legitimate sites can have these keywords, so reduce weight significantly
-    keyword_found = False
-    leet_map = {'l': '1', 'e': '3', 'o': '0', 's': '5', 'a': '4', 'i': '1'}
-    
-    for kw in keywords:
-        # Only flag if keyword + digit (more suspicious pattern)
-        if re.search(rf'{kw}\d', url.lower()):
-            weight = int(15 * sensitivity_multiplier)
-            if weight > 0:
-                risks.append(('Keyword Variation', weight, f'Suspicious keyword variation: {kw}.'))
-                score += weight
-                keyword_found = True
-                break
+        parsed = urlparse(url)
+        netloc = parsed.netloc or ''
+        path = parsed.path or ''
+        query = parsed.query or ''
         
-        # Leetspeak is more suspicious
-        pattern = ''.join(f'[{c}{leet_map[c]}]' if c in leet_map else c for c in kw)
-        for match in re.finditer(pattern, url.lower()):
-            if match.group() != kw:
-                weight = int(45 * sensitivity_multiplier)
-                if weight > 0:
-                    risks.append(('Leetspeak Typosquatting', weight, f'Detected leetspeak: {match.group()}.'))
-                    score += weight
-                    keyword_found = True
-                    break
-        if keyword_found:
-            break
-    
-    # 5. Encoding & Special Characters - more intelligent detection
-    encoded = sum(1 for c in url if c == '%')
-    if encoded > 0:
-        ratio = encoded / len(url)
-        if ratio > 0.30:
-            # Very high encoding is suspicious
-            risks.append(('High Hex Encoding', 50, f'Heavy use of % encoding ({int(ratio*100)}%) to bypass filters.'))
-            score += 50
-        elif ratio > 0.20 and not is_legit_pattern:
-            # Moderate encoding, only flag if not legitimate pattern
-            weight = int(35 * sensitivity_multiplier)
-            if weight > 0:
-                risks.append(('Moderate Hex Encoding', weight, f'Notable % encoding ({int(ratio*100)}%).'))
-                score += weight
-    
-    # 6. Subdomain Abuse - but many legitimate sites use multiple subdomains
-    labels = [s for s in netloc.split('.') if s]
-    subdomain_count = len(labels)
-    if subdomain_count > 5:
-        # 5+ subdomains is very suspicious
-        risks.append(('Excessive Subdomains', 40, f'{subdomain_count} subdomain levels detected.'))
-        score += 40
-    elif subdomain_count > 3 and not is_legit_pattern:
-        # 4 subdomains might be legitimate (e.g., cdn.assets.example.com)
-        weight = int(20 * sensitivity_multiplier)
-        if weight > 0:
-            risks.append(('Many Subdomains', weight, f'{subdomain_count} subdomain levels.'))
-            score += weight
-    
-    # 7. Entropy (Randomness) - with better thresholds
-    chars = [c for c in netloc if c.isalnum()]  # Only check domain, not full URL
-    if chars and len(chars) > 8:  # Need sufficient sample size
-        freq = Counter(chars)
-        total = len(chars)
-        entropy = -sum((count / total) * math.log2(count / total) for count in freq.values() if count > 0)
+        # Early legitimacy check - if matches known legitimate patterns, reduce sensitivity
+        is_legit_pattern = is_likely_legitimate(url, netloc)
+        sensitivity_multiplier = 0.5 if is_legit_pattern else 1.0
         
-        # High entropy in domain name is very suspicious (DGA)
-        if entropy > 4.8:
-            risks.append(('Very High Entropy', 60, f'Domain has very random appearance (entropy: {entropy:.2f}).'))
-            score += 60
-        elif entropy > 4.5 and not is_legit_pattern:
-            weight = int(35 * sensitivity_multiplier)
-            if weight > 0:
-                risks.append(('High Entropy', weight, f'Domain appears random (entropy: {entropy:.2f}).'))
-                score += weight
-    
-    # 8. Homograph / Punycode - strong indicator
-    if 'xn--' in netloc:
-        risks.append(('Punycode/IDN', 55, 'Uses Punycode (xn--) which can hide non-Latin characters.'))
-        score += 55
-
-    scripts = set()
-    for char in netloc:
-        try:
-            name = unicodedata.name(char)
-            script = name.split()[0]
-            if script in ['LATIN', 'CYRILLIC', 'GREEK', 'ARABIC', 'HEBREW']:
-                scripts.add(script)
-        except ValueError:
-            pass
-    
-    if len(scripts) > 1:
-        # Mixed scripts in domain is highly suspicious
-        risks.append(('Homograph Attack', 70, f'Mixes character scripts ({scripts}) to spoof domains.'))
-        score += 70
-    
-    # 9. Suspicious TLDs & Extensions - refined list and scoring
-    # Some TLDs are heavily abused, others less so
-    highly_suspicious_tlds = ['.tk', '.ml', '.ga', '.cf', '.gq']  # Free domains, very high abuse
-    suspicious_tlds = ['.xyz', '.top', '.club', '.cn', '.zip', '.mov', '.work', '.click']
-    
-    url_lower = url.lower()
-    if any(url_lower.endswith(tld) for tld in highly_suspicious_tlds):
-        risks.append(('High-Risk TLD', 55, 'TLD is frequently abused (free domain service).'))
-        score += 55
-    elif any(url_lower.endswith(tld) for tld in suspicious_tlds) and not is_legit_pattern:
-        weight = int(30 * sensitivity_multiplier)
-        if weight > 0:
-            risks.append(('Suspicious TLD', weight, 'TLD has elevated abuse rates.'))
-            score += weight
-
-    # Direct download links to executables - strong malware indicator
-    if re.search(r'\.(exe|scr|bat|cmd|vbs|ps1)$', path, re.IGNORECASE):
-        risks.append(('Executable Download', 65, 'Direct link to executable file.'))
-        score += 65
-    elif re.search(r'\.(zip|rar|7z|dmg|iso|bin|apk)$', path, re.IGNORECASE):
-        # Archives are less suspicious but still notable
-        weight = int(30 * sensitivity_multiplier)
-        if weight > 0:
-            risks.append(('Archive Download', weight, 'Direct link to archive file.'))
-            score += weight
-
-    # 10. Port Check - with more context
-    if parsed.port:
-        if parsed.port in [22, 23, 3389]:  # SSH, Telnet, RDP
-            risks.append(('Remote Access Port', 45, f'Uses remote access port {parsed.port}.'))
-            score += 45
-        elif parsed.port not in [80, 443, 8080, 8443, 3000, 5000, 8000]:  # Common dev/web ports
-            weight = int(40 * sensitivity_multiplier)
-            if weight > 0:
-                risks.append(('Non-Standard Port', weight, f'Uses unusual port {parsed.port}.'))
-                score += weight
-
-    # 11. Shorteners - strong obfuscation indicator
-    shorteners = [
-        'bit.ly', 'goo.gl', 'tinyurl.com', 't.co', 'is.gd', 'cli.gs',
-        'ow.ly', 'buff.ly', 'adf.ly', 'bc.vc', 'soo.gd'
-    ]
-    if any(s in netloc.lower() for s in shorteners):
-        risks.append(('URL Shortener', 50, 'Uses URL shortener to hide destination.'))
-        score += 50
-
-    # 12. Suspicious query redirect parameters - refined detection
-    query = (parsed.query or '').lower()
-    if query:
-        redirect_params = ['redirect', 'redirect_uri', 'url', 'next', 'goto', 'dest', 'destination', 'continue', 'return']
-        # Check if redirect param points to external domain
-        if any(p + '=' in query for p in redirect_params):
-            # Try to extract the redirect target
-            redirect_suspicious = False
-            for param in redirect_params:
-                if param + '=' in query:
-                    param_val = query.split(param + '=')[1].split('&')[0]
-                    # If it looks like an external URL (has http or another domain)
-                    if 'http' in param_val or '//' in param_val:
-                        redirect_suspicious = True
-                        break
+        # 1. Enhanced IP Address Detection
+        ip_pattern = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.) {3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
+        if re.search(ip_pattern, netloc.split(':')[0]):
+            # Check if it's a private/localhost IP (less risky)
+            if re.match(r'^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)', netloc):
+                risks.append(('Private IP Address', 15, 'Uses private/localhost IP (dev/testing environment).'))
+                score += 15
+            else:
+                risks.append(('Public IP Address URL', 100, 'URL uses raw public IP address instead of domain - high risk.'))
+                score += 100
+        
+        # 2. Enhanced Double Extension Detection
+        # Check for dangerous double extensions in path
+        dangerous_exts = ['exe', 'scr', 'bat', 'com', 'pif', 'cmd', 'vbs', 'js', 'jse', 'ws', 'wsf', 'msi', 'mht', 'mhtml', 'lnk']
+        double_ext_pattern = r'\.({})\.({})'.format('|'.join(dangerous_exts), '|'.join(dangerous_exts + ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']))
+        double_matches = re.findall(double_ext_pattern, path.lower())
+        if double_matches:
+            for match in double_matches:
+                ext_risk = 95
+                score += ext_risk
+                risks.append(('Dangerous Double Extension', ext_risk, f'Dangerous double file extension detected: .{match[0]}.{match[1]}'))
+        
+        # Check for any double extension (not just dangerous ones)
+        general_double_ext = r'\.\w+\.\w+'  # Any double extension
+        general_matches = re.findall(general_double_ext, path.lower())
+        if general_matches and not double_matches:  # Only if not already caught by dangerous check
+            for match in general_matches[:3]:  # Limit to first 3 matches
+                ext_risk = 70
+                score += ext_risk
+                risks.append(('Double Extension', ext_risk, f'Double file extension detected: {match}'))
+        
+        # 3. Enhanced Entropy Calculation
+        content_to_check = path + query
+        chars = [c for c in content_to_check if c.isalnum()]  # Only alphanumeric for entropy calc
+        if chars and len(chars) > 8:  # Need sufficient sample size
+            freq = Counter(chars)
+            total = len(chars)
+            entropy = -sum((count / total) * math.log2(count / total) for count in freq.values() if count > 0)
             
-            if redirect_suspicious:
-                risks.append(('Open Redirect Risk', 40, 'Query contains redirect to external URL.'))
-                score += 40
-            elif not is_legit_pattern:
-                weight = int(20 * sensitivity_multiplier)
-                if weight > 0:
-                    risks.append(('Redirect Parameter', weight, 'Query has redirect parameter.'))
-                    score += weight
-
-    # 13. Suspicious character repetition - but be more selective
-    if re.search(r'([/?&%._=-])\1{5,}', url):  # 5+ repetitions instead of 3
-        risks.append(('Character Repetition', 30, 'Unusually repeated special characters.'))
-        score += 30
-    
-    # 14. NEW PARAMETER: Mixed TLD Detection (legitimate + suspicious)
-    # Detects patterns like .com.br.tk (mixing country code with free TLD)
-    tld_parts = netloc.split('.')[-3:] if len(netloc.split('.')) >= 3 else []
-    if len(tld_parts) >= 2:
-        legitimate_cctlds = ['uk', 'au', 'ca', 'de', 'fr', 'br', 'in', 'jp']
-        suspicious_tlds = ['tk', 'ml', 'ga', 'cf', 'gq']
+            # Very high entropy in path/query is suspicious
+            if entropy > 4.5:
+                entropy_risk = min(90, max(40, int(entropy * 18)))
+                score += entropy_risk
+                risks.append(('Very High Entropy', entropy_risk, f'Very high randomness in URL path/query: {entropy:.2f}'))
+            elif entropy > 3.8:
+                entropy_risk = min(70, max(25, int(entropy * 15)))
+                score += entropy_risk
+                risks.append(('High Entropy', entropy_risk, f'High randomness in URL path/query: {entropy:.2f}'))
         
-        has_legit = any(tld in legitimate_cctlds for tld in tld_parts)
-        has_suspicious = any(tld in suspicious_tlds for tld in tld_parts)
+        # 4. Enhanced Keyword Stuffing Detection
+        security_keywords = ['login', 'secure', 'bank', 'account', 'signin', 'password', 'update', 'confirm', 
+                           'verify', 'secure', 'official', 'ebay', 'paypal', 'amazon', 'apple', 'microsoft', 
+                           'facebook', 'google', 'twitter', 'instagram', 'sbi', 'hdfc', 'icici', 'axis', 
+                           'citibank', 'hsbc', 'chase', 'wellsfargo', 'bofa', 'santander', 'netflix', 'spotify', 
+                           'adobe', 'office', 'microsoftonline', 'salesforce', 'zendesk', 'slack', 'dropbox', 
+                           'onedrive', 'sharepoint', 'admin', 'webmail', 'owa', 'portal']
         
-        if has_legit and has_suspicious:
-            risks.append(('Mixed TLD Pattern', 65, 
-                        f'Suspicious TLD combination: {"." + ".".join(tld_parts)}'))
-            score += 65
-
-    return score, risks
+        # Count unique security keywords in URL
+        found_keywords = [kw for kw in security_keywords if kw.lower() in url.lower()]
+        unique_keywords = list(set(found_keywords))
+        
+        if len(unique_keywords) > 2:
+            keyword_risk = min(80, len(unique_keywords) * 20)
+            score += keyword_risk
+            risks.append(('Keyword Stuffing', keyword_risk, f'Keyword stuffing detected: {", ".join(unique_keywords[:5])}{"..." if len(unique_keywords) > 5 else ""} ({len(unique_keywords)} unique keywords)'))
+        
+        # 5. Enhanced Percent Encoding Detection
+        encoded_count = len(re.findall(r'%[0-9A-Fa-f]{2}', url))
+        if encoded_count > 2:
+            ratio = encoded_count / len(url) if len(url) > 0 else 0
+            if ratio > 0.25:
+                encoding_risk = min(80, encoded_count * 10)
+                score += encoding_risk
+                risks.append(('Very High Encoding', encoding_risk, f'Very high percent encoding: {encoded_count} encoded chars ({ratio*100:.1f}%)'))
+            elif ratio > 0.15:
+                encoding_risk = min(60, encoded_count * 8)
+                score += encoding_risk
+                risks.append(('High Encoding', encoding_risk, f'High percent encoding: {encoded_count} encoded chars ({ratio*100:.1f}%)'))
+            elif encoded_count > 5:
+                encoding_risk = min(40, encoded_count * 6)
+                score += encoding_risk
+                risks.append(('Moderate Encoding', encoding_risk, f'Moderate percent encoding: {encoded_count} encoded chars'))
+        
+        # 6. Enhanced Subdomain Analysis
+        labels = [s for s in netloc.split('.') if s]
+        subdomain_count = len(labels)
+        if subdomain_count > 5:
+            subdomain_risk = min(70, (subdomain_count - 4) * 15)
+            score += subdomain_risk
+            risks.append(('Excessive Subdomains', subdomain_risk, f'Excessive subdomains: {subdomain_count} parts'))
+        elif subdomain_count > 4 and not is_legit_pattern:
+            weight = int(35 * sensitivity_multiplier)
+            if weight > 0:
+                risks.append(('Many Subdomains', weight, f'Many subdomains: {subdomain_count} parts'))
+                score += weight
+        
+        # 7. Enhanced Long URL Check
+        if len(url) > 4000:
+            long_url_risk = 60
+            score += long_url_risk
+            risks.append(('Very Long URL', long_url_risk, f'Very long URL: {len(url)} chars'))
+        elif len(url) > 2048:
+            long_url_risk = 40
+            score += long_url_risk
+            risks.append(('Long URL', long_url_risk, f'Long URL: {len(url)} chars'))
+        
+        # 8. Enhanced Homograph Attack Detection
+        homograph_chars = {
+            # Cyrillic homographs
+            'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'х': 'x', 'у': 'y', 'к': 'k', 'в': 'b', 'м': 'm',
+            # Greek homographs
+            'α': 'a', 'β': 'b', 'ε': 'e', 'η': 'n', 'ι': 'i', 'κ': 'k', 'ο': 'o', 'ρ': 'p', 'τ': 't', 'χ': 'x',
+            # Other similar characters
+            'і': 'i', 'ӏ': 'l', 'ј': 'j', 'ԛ': 'q', 'ԝ': 'w', 'һ': 'h', 'ԁ': 'd', 'ѕ': 's', 'ѓ': 'g',
+        }
+        
+        homograph_matches = [(c, homograph_chars[c]) for c in url if c in homograph_chars]
+        if homograph_matches:
+            unique_chars = list(set([char for char, _ in homograph_matches]))
+            homograph_risk = min(90, len(unique_chars) * 25)
+            score += homograph_risk
+            risks.append(('Homograph Attack', homograph_risk, f'Potential homograph attack characters: {unique_chars[:5]}{"..." if len(unique_chars) > 5 else ""}'))
+        
+        # 9. Character Repetition Detection
+        repeat_pattern = r'(.)\1{5,}'  # 6+ consecutive identical characters
+        repeat_matches = re.findall(repeat_pattern, netloc + path)
+        if repeat_matches:
+            repeat_risk = min(70, len(set(repeat_matches)) * 20)
+            score += repeat_risk
+            risks.append(('Character Repetition', repeat_risk, f'Excessive character repetition: {len(set(repeat_matches))} unique repeated characters'))
+        
+        # 10. Suspicious Patterns in Domain
+        if re.search(r'[0-9]{4,}', netloc):  # 4+ consecutive digits in domain
+            digit_seq_risk = 45
+            score += digit_seq_risk
+            risks.append(('Sequential Digits', digit_seq_risk, f'Consecutive digits in domain: {re.search(r"[0-9]{4,}", netloc).group()}'))
+        
+        # 11. Suspicious TLD Combinations (Enhanced)
+        tld_parts = netloc.split('.')[-3:] if len(netloc.split('.')) >= 3 else []
+        if len(tld_parts) >= 2:
+            legitimate_cctlds = ['uk', 'au', 'ca', 'de', 'fr', 'br', 'in', 'jp', 'kr', 'cn', 'ru', 'nl', 'it', 'es', 'pl', 'se', 'no', 'dk']
+            suspicious_tlds = ['tk', 'ml', 'ga', 'cf', 'gq', 'top', 'xyz', 'club', 'work', 'click', 'stream', 'download', 'cricket', 'date', 'faith', 'review', 'science', 'site', 'space', 'tech', 'win']
+            
+            has_legit = any(tld in legitimate_cctlds for tld in tld_parts)
+            has_suspicious = any(tld in suspicious_tlds for tld in tld_parts)
+            
+            if has_legit and has_suspicious:
+                mixed_tld_risk = 75
+                risks.append(('Mixed TLD Pattern', mixed_tld_risk, 
+                            f'Suspicious TLD combination: {".".join(tld_parts)}'))
+                score += mixed_tld_risk
+        
+        # 12. Enhanced Obfuscation Checks
+        if '@' in netloc:
+            # @ in netloc is almost always malicious
+            risks.append(('Obfuscated Authority', 85, 'Uses "@" in domain to hide actual host - credential harvesting.'))
+            score += 85
+            
+        # Double slash in path - but allow it in query params
+        if '//' in path and '?' not in url[:url.index('//') if '//' in url else 0]:
+            weight = int(50 * sensitivity_multiplier)
+            if weight > 0:
+                risks.append(('Double Slash in Path', weight, 'Contains "//" in path, may indicate open redirect.'))
+                score += weight
+        
+        # Normalize to 0-100 scale
+        score = min(100, score)
+        
+        return score, risks
+    except Exception as e:
+        # Return safe values in case of error
+        return 0, [('Lexical Analysis Error', 0, f'Error analyzing URL: {str(e)[:50]}')]

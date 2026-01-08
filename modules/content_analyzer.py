@@ -1,274 +1,273 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
+import socket
+import whois
+from datetime import datetime
+import warnings
+warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
-# Global variable to store last soup object for advanced analysis
+# Global variable to store the last soup object for advanced analysis
 _last_soup = None
 
 def get_last_soup():
-    """Return the last parsed BeautifulSoup object for advanced analysis."""
-    global _last_soup
+    """Return the last soup object for advanced analysis."""
     return _last_soup
 
 def content_risk(url):
-    """
-    Static content analysis with reduced false positives.
-    Enhanced to avoid flagging legitimate sites.
-    """
+    """Analyze URL content for malicious indicators with enhanced zero-day phishing detection."""
+    global _last_soup
     risks = []
     score = 0
     
-    # Check if URL matches known legitimate patterns
-    from config import Config
-    
-    # Check against trusted domains first
-    from urllib.parse import urlparse
-    domain = urlparse(url).netloc.lower()
-    if domain in [d.lower() for d in Config.TRUSTED_DOMAINS]:
-        # Skip content analysis for trusted domains
-        return 0, []
-    
-    # NEW: Enhanced legitimacy check for educational institutions
-    is_legit = any(pattern in url.lower() for pattern in Config.KNOWN_LEGITIMATE_PATTERNS)
-    
-    # Check for educational TLDs and keywords
-    educational_tlds = ['.edu', '.ac.', '.edu.']
-    has_edu_tld = any(tld in domain for tld in educational_tlds)
-    
-    has_edu_keyword = any(keyword in domain for keyword in Config.EDUCATIONAL_KEYWORDS)
-    
-    # NEW: Check for subdomains of known legitimate domains
-    # This helps with domains like web.whatsapp.com, m.facebook.com, etc.
-    is_trusted_subdomain = False
-    for trusted_domain in Config.TRUSTED_DOMAINS:
-        if domain.endswith('.' + trusted_domain) or domain == trusted_domain:
-            is_trusted_subdomain = True
-            break
-    
-    # If educational institution, apply very low sensitivity
-    if has_edu_tld or (has_edu_keyword and is_legit) or is_trusted_subdomain:
-        sensitivity_multiplier = 0.1  # Very lenient for educational sites
-        is_legit = True  # Treat as legitimate
-    elif is_legit:
-        sensitivity_multiplier = 0.3  # Much more lenient for legitimate patterns
-    else:
-        sensitivity_multiplier = 1.0
-    
     try:
-        response = requests.get(url, timeout=5, allow_redirects=True, headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        })
-        soup = BeautifulSoup(response.text, 'html.parser')
+        parsed = urlparse(url)
+        domain = parsed.netloc
         
-        # Store soup object globally for advanced analysis
-        global _last_soup
-        _last_soup = soup
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
         
-        domain = urlparse(url).netloc
+        response = requests.get(url, headers=headers, timeout=10, verify=False)
+        _last_soup = BeautifulSoup(response.content, 'html.parser')
+        soup = _last_soup
         
-        # 1. Suspicious Forms - refined detection
+        # 1. Enhanced brand impersonation detection
+        title = soup.title.string if soup.title else ""
+        body_text = soup.get_text().lower()
+        
+        # Extended list of brand names for impersonation detection
+        brands = [
+            'paypal', 'amazon', 'apple', 'microsoft', 'facebook', 'google', 'twitter', 'instagram', 
+            'sbi', 'hdfc', 'icici', 'axis', 'citibank', 'netflix', 'spotify', 'adobe', 'office', 
+            'microsoftonline', 'salesforce', 'zendesk', 'slack', 'dropbox', 'ebay', 'chase', 
+            'wellsfargo', 'bankofamerica', 'santander', 'bofa', 'capitalone', 'usaa', 'ally', 
+            'americanexpress', 'mastercard', 'visa', 'discover', 'tdbank', 'pnc', 'wells fargo',
+            'yahoo', 'gmail', 'outlook', 'hotmail', 'aol', 'icloud', 'protonmail', 'tutanota'
+        ]
+        
+        # Check for brand impersonation in title and body
+        for brand in brands:
+            if brand.lower() in title.lower() and brand.lower() not in domain.lower():
+                # This is a potential brand impersonation
+                brand_score = 75
+                risks.append(('Brand Impersonation', brand_score, f'Brand name "{brand}" in title but not in domain: {domain}'))
+                score += brand_score
+            elif brand.lower() in body_text and brand.lower() not in domain.lower():
+                # Check if brand is mentioned frequently in body (potential impersonation)
+                brand_mentions = len(re.findall(r'\b' + brand.lower() + r'\b', body_text))
+                if brand_mentions > 2:  # More than 2 mentions suggest impersonation
+                    brand_score = min(70, brand_mentions * 20)
+                    risks.append(('Potential Brand Impersonation', brand_score, f'Brand "{brand}" mentioned {brand_mentions} times in content but not in domain'))
+                    score += brand_score
+        
+        # 2. Enhanced form analysis
         forms = soup.find_all('form')
-        if forms:
-            for form in forms:
-                action = form.get('action', '')
-                # Check if form posts to entirely different domain
-                if action and action.startswith('http'):
-                    action_domain = urlparse(action).netloc
-                    if action_domain and action_domain != domain and domain not in action_domain:
-                        # Posting to different domain is suspicious
-                        weight = int(75 * sensitivity_multiplier)
-                        if weight > 0:
-                            risks.append(('External Form Action', weight, f'Form posts to {action_domain}.'))
-                            score += weight
-                            break
-        
-        # 2. Insecure Password Fields - critical issue
-        password_inputs = soup.find_all('input', {'type': 'password'})
-        if password_inputs:
-            if not url.startswith('https'):
-                # Password over HTTP is very bad
-                risks.append(('Insecure Password Field', 70, 'Password field on non-HTTPS page.'))
-                score += 70
+        for form in forms:
+            action = form.get('action', '')
+            method = form.get('method', 'get').lower()
             
-            # Hidden password fields are very suspicious
-            for pw in password_inputs:
-                style = pw.get('style', '').lower()
-                if any(h in style for h in ['display:none', 'visibility:hidden', 'opacity:0']):
-                    risks.append(('Hidden Password Field', 35, 'Hidden password input detected.'))
-                    score += 35
-                    break
-
-        # 3. JavaScript Obfuscation & Behaviors - refined detection
-        scripts = soup.find_all('script')
-        dangerous_js_found = False
-        for script in scripts:
-            text = script.string or ''
-            if not text:
-                continue
+            # Check if form posts to external domain
+            if action.startswith(('http://', 'https://')):
+                action_parsed = urlparse(action)
+                if action_parsed.netloc != domain:
+                    external_form_score = 80
+                    risks.append(('External Form Action', external_form_score, f'Form posts to external domain: {action_parsed.netloc}'))
+                    score += external_form_score
             
-            # High Entropy / Packed Code - more sophisticated check
-            long_strings = re.findall(r'[a-zA-Z0-9]{60,}', text)
-            if len(long_strings) > 10:  # Many long strings indicates packing
-                char_count = len(text)
-                unique = len(set(text))
-                entropy_proxy = unique / char_count if char_count else 0
-                if entropy_proxy < 0.08:  # Very low uniqueness = highly packed
-                    weight = int(70 * sensitivity_multiplier)
-                    if weight > 0:
-                        risks.append(('Obfuscated JavaScript', weight, 'Highly packed/obfuscated code detected.'))
-                        score += weight
-                        dangerous_js_found = True
-                        break
+            # Look for credential-related inputs
+            inputs = form.find_all(['input', 'select', 'textarea'])
+            password_fields = []
+            username_fields = []
             
-            # Dangerous Functions - context matters
-            dangerous_patterns = ['eval(', 'unescape(', 'document.write(', 'innerHTML=']
-            dangerous_count = sum(1 for p in dangerous_patterns if p in text)
-            if dangerous_count >= 2:
-                # Multiple dangerous functions is more suspicious
-                weight = int(55 * sensitivity_multiplier)
-                if weight > 0:
-                    risks.append(('Dangerous JS Functions', weight, 'Multiple risky functions (eval, document.write, etc.).'))
-                    score += weight
-                    dangerous_js_found = True
-                    break
+            for inp in inputs:
+                inp_type = inp.get('type', 'text').lower()
+                inp_name = inp.get('name', '').lower()
+                inp_id = inp.get('id', '').lower()
                 
-            # Right-Click Disable - minor indicator
-            if not is_legit and ('event.button==2' in text or 'oncontextmenu' in text):
-                weight = int(20 * sensitivity_multiplier)
-                if weight > 0:
-                    risks.append(('Right-Click Disabled', weight, 'Script blocks right-click.'))
-                    score += weight
-                    break
-        
-        # 4. Iframe & Frame Injection - context matters
-        iframes = soup.find_all('iframe')
-        if len(iframes) > 0:
-            # Check for suspicious iframe usage
-            suspicious_iframes = 0
-            for iframe in iframes:
-                src = iframe.get('src', '')
-                if 'data:text/html' in src or 'base64' in src:
-                    # Embedded HTML iframe is very suspicious
-                    weight = int(60 * sensitivity_multiplier)
-                    if weight > 0:
-                        risks.append(('Embedded HTML Iframe', weight, 'Iframe uses embedded/base64 HTML.'))
-                        score += weight
-                    suspicious_iframes += 1
-                elif src and src.startswith('http'):
-                    iframe_domain = urlparse(src).netloc
-                    if iframe_domain != domain:
-                        suspicious_iframes += 1
+                # Password fields
+                if inp_type == 'password' or any(x in inp_name + inp_id for x in ['pass', 'pwd', 'password']):
+                    password_fields.append(inp)
+                
+                # Username/email fields
+                if inp_type in ['text', 'email'] and any(x in inp_name + inp_id for x in ['user', 'name', 'email', 'login', 'username']):
+                    username_fields.append(inp)
+                
+                # Check for hidden credential fields
+                if inp_type == 'hidden':
+                    hidden_value = inp.get('value', '').lower()
+                    if any(x in hidden_value for x in ['password', 'credential', 'account']):
+                        hidden_cred_score = 65
+                        risks.append(('Hidden Credential Field', hidden_cred_score, f'Hidden field contains credential-related text: {hidden_value[:50]}'))
+                        score += hidden_cred_score
             
-            # Multiple iframes from other domains can be suspicious
-            if suspicious_iframes >= 3 and not is_legit:
-                weight = int(30 * sensitivity_multiplier)
-                if weight > 0:
-                    risks.append(('Multiple External Iframes', weight, f'{suspicious_iframes} iframes from external domains.'))
-                    score += weight
-            elif len(iframes) > 5 and not is_legit:
-                # Many iframes, only flag if not legitimate
-                weight = int(15 * sensitivity_multiplier)
-                if weight > 0:
-                    risks.append(('Many Iframes', weight, f'Page has {len(iframes)} iframes.'))
-                    score += weight
-
-        # 5. Social Engineering Keywords - refined detection
-        text = soup.get_text().lower()
-        urgency_patterns = [
-            r'verify.*account', r'update.*payment', r'suspended.*access', 
-            r'unusual.*activity', r'confirm.*identity', r'click.*here.*secure',
-            r'account.*locked', r'immediate.*action', r'expire.*today'
+            # If form has both username and password fields, check for security features
+            if password_fields and username_fields:
+                # Check if form has CSRF token
+                csrf_indicators = ['csrf', 'token', 'authenticity_token', '_token', 'xsrf']
+                has_csrf = any(any(ind in inp.get('name', '').lower() for ind in csrf_indicators) 
+                              for inp in inputs if inp.get('type', '') in ['hidden', 'text'])
+                
+                if not has_csrf:
+                    no_csrf_score = 60
+                    risks.append(('Missing CSRF Token', no_csrf_score, 'Form lacks CSRF protection - potential credential harvesting'))
+                    score += no_csrf_score
+                
+                # Check if form is using HTTP instead of HTTPS
+                if url.lower().startswith('http:') and method == 'post':
+                    insecure_form_score = 70
+                    risks.append(('Insecure Password Form', insecure_form_score, 'Password form submitted over unencrypted HTTP'))
+                    score += insecure_form_score
+        
+        # 3. Enhanced phishing indicators in content
+        phishing_indicators = [
+            (r'urgent', 'Urgent Action Required'),
+            (r'act now|limited time|expires?', 'Urgency Pressure'),
+            (r'confirm account|verify account|update account', 'Account Verification Request'),
+            (r'click here|download now|claim now', 'Clickbait Language'),
+            (r'free money|win big|congratulations', 'Prize/Winning Scam'),
+            (r'blocked|suspended|disabled', 'Account Status Threat'),
+            (r'personal information|verify identity|confirm details', 'Information Request'),
+            (r'banking|secure login|online banking', 'Banking Impersonation'),
+            (r'payment|transaction|billing', 'Payment Related'),
+            (r'document|pdf|attachment', 'Document Impersonation'),
         ]
         
-        # Count how many patterns match
-        matches = sum(1 for p in urgency_patterns if re.search(p, text))
-        if matches >= 3:
-            # Multiple urgency patterns is very suspicious
-            weight = int(50 * sensitivity_multiplier)
-            if weight > 0:
-                risks.append(('Social Engineering Lure', weight, f'{matches} urgency/threat patterns detected.'))
-                score += weight
-        elif matches >= 1 and not is_legit:
-            # Single pattern, only flag for non-legitimate
-            weight = int(25 * sensitivity_multiplier)
-            if weight > 0:
-                risks.append(('Urgency Language', weight, 'Text contains urgency/account threat language.'))
-                score += weight
-            
-        # 6. External Resource Ratio - refined
-        imgs = soup.find_all('img')
-        if len(imgs) > 5:  # Need meaningful sample size
-            external_imgs = sum(1 for img in imgs if img.get('src', '').startswith('http') and domain not in img.get('src', ''))
-            external_ratio = external_imgs / len(imgs) if len(imgs) > 0 else 0
-            
-            if external_ratio > 0.9 and not is_legit:
-                # Almost all images from external sources
-                weight = int(25 * sensitivity_multiplier)
-                if weight > 0:
-                    risks.append(('High External Resources', weight, f'{int(external_ratio*100)}% images from foreign domains.'))
-                    score += weight
-
-        # 7. Meta Refresh / Auto-Redirect - refined
-        meta_refresh = soup.find('meta', attrs={'http-equiv': re.compile('refresh', re.IGNORECASE)})
-        if meta_refresh:
-            content = meta_refresh.get('content', '')
-            if content:
-                # Check if it redirects to external domain
-                if 'url=' in content.lower():
-                    redirect_url = content.lower().split('url=')[1]
-                    if redirect_url.startswith('http') and domain not in redirect_url:
-                        # Redirects to external domain - suspicious
-                        weight = int(45 * sensitivity_multiplier)
-                        if weight > 0:
-                            risks.append(('External Meta Redirect', weight, 'Meta refresh redirects to external domain.'))
-                            score += weight
-                elif not is_legit:
-                    weight = int(25 * sensitivity_multiplier)
-                    if weight > 0:
-                        risks.append(('Meta Refresh', weight, 'Page uses meta refresh tag.'))
-                        score += weight
-
-        # 8. JavaScript-based redirects - refined
-        redirect_patterns = [
-            r'window\.location\s*=\s*["\'][^"\']',
-            r'location\.href\s*=\s*["\'][^"\']',
-            r'location\.replace\(["\'][^"\']'
-        ]
-        redirect_matches = sum(1 for p in redirect_patterns if re.search(p, response.text))
-        if redirect_matches >= 2 and not is_legit:
-            # Multiple redirect methods
-            weight = int(40 * sensitivity_multiplier)
-            if weight > 0:
-                risks.append(('Multiple JS Redirects', weight, 'Multiple JavaScript redirect methods found.'))
-                score += weight
-        elif redirect_matches == 1 and not is_legit:
-            # Single redirect, less suspicious
-            weight = int(20 * sensitivity_multiplier)
-            if weight > 0:
-                risks.append(('JavaScript Redirect', weight, 'JavaScript performs redirection.'))
-                score += weight
-
-        # 9. Credential harvesting fields - refined scoring
-        inputs = soup.find_all('input')
-        sensitive_names = ['password', 'passwd', 'passcode', 'ssn', 'social', 'cvv', 'card', 'otp', 'token', 'pin']
-        sensitive_count = sum(1 for inp in inputs if any(s in ' '.join([inp.get('name', ''), inp.get('type', ''), inp.get('placeholder', '')]).lower() for s in sensitive_names))
+        for pattern, desc in phishing_indicators:
+            matches = re.findall(pattern, body_text, re.IGNORECASE)
+            if len(matches) > 2:  # More than 2 occurrences
+                phishing_score = min(65, len(matches) * 15)
+                risks.append((desc, phishing_score, f'Found {len(matches)} instances of "{pattern}" in content'))
+                score += phishing_score
         
-        if sensitive_count >= 4:
-            # Many sensitive fields is very suspicious
-            weight = int(55 * sensitivity_multiplier)
-            if weight > 0:
-                risks.append(('Multiple Sensitive Fields', weight, f'Form collects {sensitive_count} sensitive data types.'))
-                score += weight
-        elif sensitive_count >= 3 and not is_legit:
-            # 3 fields, only flag for non-legitimate
-            weight = int(35 * sensitivity_multiplier)
-            if weight > 0:
-                risks.append(('Sensitive Data Collection', weight, f'Form collects {sensitive_count} sensitive data types.'))
-                score += weight
+        # 4. Suspicious links analysis
+        links = soup.find_all('a', href=True)
+        suspicious_links = []
+        
+        for link in links:
+            href = link.get('href')
+            link_text = link.get_text().strip().lower()
+            
+            # Check for suspicious link texts
+            suspicious_texts = [
+                'click here', 'download', 'update now', 'verify account', 
+                'secure login', 'free gift', 'urgent action', 'act now'
+            ]
+            
+            if any(text in link_text for text in suspicious_texts):
+                # Check if the link goes to a different domain
+                full_link = urljoin(url, href)
+                link_domain = urlparse(full_link).netloc
+                
+                if link_domain != domain and link_domain:
+                    suspicious_links.append((full_link, link_text))
+        
+        if suspicious_links:
+            link_score = min(70, len(suspicious_links) * 25)
+            risks.append(('Suspicious External Links', link_score, f'{len(suspicious_links)} potentially suspicious external links found'))
+            score += link_score
+        
+        # 5. Enhanced script analysis
+        scripts = soup.find_all('script')
+        for script in scripts:
+            script_content = script.string or ""
+            if script_content:
+                # Check for suspicious JavaScript patterns
+                suspicious_js_patterns = [
+                    (r'window\.location\s*[+]=|\s*=\s*["\'][^"\']*location', 'Dynamic URL Redirection'),
+                    (r'document\.write|innerHTML|outerHTML', 'DOM Manipulation'),
+                    (r'eval\(|setTimeout\([^,]+,', 'Code Evaluation'),
+                    (r'atob\(|btoa\(|String\.fromCharCode', 'Encoding/Decoding'),
+                    (r'\/[\w\W]{5,}\/[igm]*\s*\.[\w]+\(', 'Obfuscated Regex'),
+                    (r'charCodeAt|fromCharCode', 'Character Manipulation'),
+                ]
+                
+                for pattern, desc in suspicious_js_patterns:
+                    matches = re.findall(pattern, script_content, re.IGNORECASE)
+                    if matches:
+                        js_score = min(60, len(matches) * 20)
+                        risks.append((desc, js_score, f'Found {len(matches)} suspicious JS patterns: {desc}'))
+                        score += js_score
+        
+        # 6. Meta tag analysis
+        meta_tags = soup.find_all('meta')
+        for meta in meta_tags:
+            name = meta.get('name', '').lower()
+            content = meta.get('content', '').lower()
+            
+            if name == 'robots' and 'noindex' in content:
+                # Site doesn't want to be indexed - potentially suspicious
+                noindex_score = 35
+                risks.append(('No Index Tag', noindex_score, 'Site prevents search engine indexing'))
+                score += noindex_score
+        
+        # 7. Image analysis for logo impersonation
+        images = soup.find_all('img')
+        suspicious_images = []
+        
+        for img in images:
+            src = img.get('src', '')
+            alt = img.get('alt', '').lower()
+            title = img.get('title', '').lower()
+            
+            # Check if image filename or attributes contain brand names
+            for brand in brands:
+                if brand.lower() in src.lower() or brand.lower() in alt or brand.lower() in title:
+                    if brand.lower() not in domain.lower():
+                        suspicious_images.append((src, brand))
+        
+        if suspicious_images:
+            img_score = min(50, len(suspicious_images) * 15)
+            risks.append(('Suspicious Brand Images', img_score, f'{len(suspicious_images)} images with brand names but not in domain'))
+            score += img_score
+        
+        # 8. Frame/iframe analysis
+        frames = soup.find_all(['iframe', 'frame'])
+        for frame in frames:
+            src = frame.get('src', '')
+            if src:
+                frame_domain = urlparse(urljoin(url, src)).netloc
+                if frame_domain and frame_domain != domain:
+                    iframe_score = 65
+                    risks.append(('External iFrame', iframe_score, f'Embedded content from external domain: {frame_domain}'))
+                    score += iframe_score
+        
+        # 9. Social engineering lures
+        social_lures = [
+            (r'free [a-z ]+ now', 'Free Offer Lure'),
+            (r'limited time|offer expires', 'Scarcity Lure'),
+            (r'click here for|download [a-z ]+ now', 'Clickbait Lure'),
+            (r'act now|before it\'s gone', 'Urgency Lure'),
+            (r'your account will be|will be suspended', 'Threat Lure'),
+        ]
+        
+        for pattern, desc in social_lures:
+            matches = re.findall(pattern, body_text, re.IGNORECASE)
+            if matches:
+                lure_score = min(55, len(matches) * 20)
+                risks.append((desc, lure_score, f'Social engineering lure found: {desc}'))
+                score += lure_score
+        
+        # 10. Check for fake security indicators
+        security_texts = [
+            'secure connection', 'encrypted', 'protected', 'secure login', 'safe browsing'
+        ]
+        for text in security_texts:
+            if text in body_text and url.lower().startswith('http:'):  # Not HTTPS
+                fake_security_score = 50
+                risks.append(('Fake Security Claim', fake_security_score, f'Claims "{text}" but uses HTTP, not HTTPS'))
+                score += fake_security_score
     
+    except requests.exceptions.RequestException as e:
+        # If we can't access the content, assign a moderate risk
+        risks.append(('Content Access Error', 20, f'Could not access content: {str(e)[:50]}'))
+        score += 20
     except Exception as e:
-        risks.append(('Content Fetch Error', 10, f'Could not analyze content: {str(e)[:30]}'))
+        risks.append(('Content Analysis Error', 10, f'Error analyzing content: {str(e)[:50]}'))
         score += 10
+    
+    # Cap the score at 100
+    score = min(100, score)
     
     return score, risks

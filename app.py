@@ -11,6 +11,9 @@ from modules.local_detection import LocalUrlDetector
 from modules.history_storage import AnalysisHistoryStorage
 from modules.advanced_features import perform_advanced_analysis
 from modules.layered_analysis import LayeredUrlAnalyzer
+from modules.combined_analyzer import CombinedUrlAnalyzer, analyze_url_combined
+from modules.ml_model import initialize_ml_detector
+from modules.malicious_file_detector import malicious_file_risk
 from config import Config
 
 app = Flask(__name__)
@@ -26,7 +29,7 @@ layered_analyzer = LayeredUrlAnalyzer()
 history_storage = AnalysisHistoryStorage()
 
 
-def derive_verdict(score, classification, risks):
+def derive_verdict(score, classification, risks, ml_analysis_result=None):
     """Derive a VirusTotal-like verdict (Safe, Suspicious, Phishing, Malicious)."""
     phishing_names = {
         'Brand Mimicry',
@@ -52,13 +55,68 @@ def derive_verdict(score, classification, risks):
         'Suspicious Hidden Fields',
         'Phishing Pattern Cluster',
         'External POST Form',
-        'Misleading Page Title'
+        'Misleading Page Title',
+        # Malicious file indicators
+        'EICAR Test File',
+        'Suspicious File Extension',
+        'Malicious Pattern Match',
+        'Suspicious Keyword'
     }
 
+    # Check if ML analysis should influence the verdict
+    ml_influence = False
+    if ml_analysis_result and ml_analysis_result.get('prediction'):
+        ml_prediction = ml_analysis_result['prediction']
+        ml_confidence = ml_analysis_result.get('confidence', 0)
+        
+        # If ML is highly confident, prioritize its verdict
+        if ml_confidence > 0.85:
+            if ml_prediction == 'Malicious':
+                # Check for phishing indicators to determine between 'Phishing' and 'Malicious'
+                phishing_flag = False
+                for cat in ('lexical', 'content', 'ai_analysis', 'domain', 
+                            'advanced_lexical', 'advanced_content', 'advanced_javascript', 
+                            'advanced_heuristic', 'advanced_behavioral', 'malicious_file'):
+                    cat_result = risks.get(cat)
+                    if not cat_result:
+                        continue
+                    _, details = cat_result
+                    for name, _, _ in details:
+                        if name in phishing_names:
+                            phishing_flag = True
+                            break
+                    if phishing_flag:
+                        break
+                return 'Phishing' if phishing_flag else 'Malicious'
+            elif ml_prediction == 'Benign':
+                return 'Safe'
+        elif ml_confidence > 0.7:
+            # Moderate confidence, but still consider ML input
+            if ml_prediction == 'Malicious':
+                # Check for phishing indicators
+                phishing_flag = False
+                for cat in ('lexical', 'content', 'ai_analysis', 'domain', 
+                            'advanced_lexical', 'advanced_content', 'advanced_javascript', 
+                            'advanced_heuristic', 'advanced_behavioral', 'malicious_file'):
+                    cat_result = risks.get(cat)
+                    if not cat_result:
+                        continue
+                    _, details = cat_result
+                    for name, _, _ in details:
+                        if name in phishing_names:
+                            phishing_flag = True
+                            break
+                    if phishing_flag:
+                        break
+                return 'Phishing' if phishing_flag else 'Malicious'
+            elif ml_prediction == 'Benign':
+                return 'Safe'
+
+    # Fallback to traditional logic if ML influence is not applied
     phishing_flag = False
     for cat in ('lexical', 'content', 'ai_analysis', 'domain', 
                 'advanced_lexical', 'advanced_content', 'advanced_javascript', 
-                'advanced_heuristic', 'advanced_behavioral'):
+                'advanced_heuristic', 'advanced_behavioral', 'malicious_file'):
         cat_result = risks.get(cat)
         if not cat_result:
             continue
@@ -97,7 +155,20 @@ def derive_confidence(score, classification, risks):
     # Malicious / Phishing: higher score + more agreeing engines => higher confidence
     return float(min(100.0, max(score, 50.0) + 5.0 * max(0, engines_triggered - 1)))
 
-def run_analysis(url, include_layered_analysis=False):
+def run_analysis(url, include_layered_analysis=False, use_combined_analysis=False):
+    # If combined analysis is requested, use the new combined approach
+    if use_combined_analysis:
+        result = analyze_url_combined(url)
+        if isinstance(result, tuple):
+            return result  # Return error tuple if invalid URL
+        
+        # Include layered analysis if also requested
+        if include_layered_analysis and 'layered_analysis' not in result:
+            layered_result = layered_analyzer.analyze_url(url)
+            result['layered_analysis'] = layered_result
+        
+        return result
+    
     parsed = urlparse(url)
     if not parsed.scheme or not parsed.netloc:
         return {'error': 'Invalid URL'}, 400
@@ -174,8 +245,54 @@ def run_analysis(url, include_layered_analysis=False):
         # If advanced analysis fails, continue with basic analysis
         risks['advanced_error'] = (0, [('Advanced Analysis Skipped', 0, str(e)[:50])])
     
+    # Run malicious file detection
+    try:
+        risks['malicious_file'] = malicious_file_risk(url)
+    except Exception as e:
+        # If malicious file detection fails, continue with analysis
+        risks['malicious_file_error'] = (0, [('Malicious File Detection Error', 0, str(e)[:50])])
+    
     score, classification, breakdown = compute_score(risks)
-    verdict = derive_verdict(score, classification, risks)
+    
+    # CRITICAL: Override for high-confidence threats like EICAR test files
+    # If malicious file detection identifies known threats, override the score/classification
+    malicious_file_result = risks.get('malicious_file')
+    if malicious_file_result and isinstance(malicious_file_result, tuple) and len(malicious_file_result) == 2:
+        mf_score, mf_details = malicious_file_result
+        if mf_score >= 90:  # Very high risk detected
+            # Check for specific high-risk indicators
+            high_risk_indicators = ['EICAR Test File']
+            has_high_risk = any(any(indicator in detail[0] for indicator in high_risk_indicators) 
+                             for detail in mf_details if isinstance(detail, tuple) and len(detail) >= 1)
+            
+            if has_high_risk:
+                score = 95  # Set to very high score
+                classification = 'Malicious'  # Override classification
+    
+    # Also run ML analysis for comparison and potential override
+    try:
+        from modules.ml_model import ml_risk
+        ml_score, ml_details = ml_risk(url)
+        # Extract ML prediction and confidence if available
+        ml_prediction = 'Benign'
+        ml_confidence = 0.5
+        for detail in ml_details:
+            if 'ML Confidence:' in detail[2]:
+                try:
+                    confidence_str = detail[2].split('ML Confidence: ')[1].split(',')[0]
+                    ml_confidence = float(confidence_str)
+                    pred_part = detail[2].split('Prediction: ')[1]
+                    ml_prediction = pred_part
+                    break
+                except:
+                    pass
+        
+        # Pass ML analysis to verdict derivation
+        verdict = derive_verdict(score, classification, risks, {'prediction': ml_prediction, 'confidence': ml_confidence})
+    except:
+        # If ML analysis fails, use traditional approach
+        verdict = derive_verdict(score, classification, risks)
+    
     confidence = derive_confidence(score, classification, risks)
     
     result = {
@@ -199,22 +316,31 @@ def index():
     chart_data = []
     if request.method == 'POST':
         url = request.form['url']
-        include_layered = 'include_layered_analysis' in request.form  # Check if checkbox is present
-        result = run_analysis(url, include_layered_analysis=include_layered)
+        include_layered = 'include_layered_analysis' in request.form
+        use_combined = 'use_combined_analysis' in request.form
+        
+        result = run_analysis(url, include_layered_analysis=include_layered, use_combined_analysis=use_combined)
         if isinstance(result, tuple):
             result = result[0]  # Handle error tuple ({'error':...}, 400)
         else:
             # Save to history
             history_storage.add_analysis(url, result)
             chart_data = [item['weighted'] for item in result['breakdown'].values()]
-        return render_template('index.html', result=result, url=url, chart_data=chart_data, include_layered_analysis=include_layered)
+        return render_template('index.html', 
+                               result=result, 
+                               url=url, 
+                               chart_data=chart_data, 
+                               include_layered_analysis=include_layered,
+                               use_combined_analysis=use_combined)
     return render_template('index.html', chart_data=chart_data)
 
 @app.route('/analyze', methods=['POST'])
 def api_analyze():
     url = request.json['url']
     include_layered = request.json.get('include_layered_analysis', False)
-    result = run_analysis(url, include_layered_analysis=include_layered)
+    use_combined = request.json.get('use_combined_analysis', False)
+    
+    result = run_analysis(url, include_layered_analysis=include_layered, use_combined_analysis=use_combined)
     if not isinstance(result, tuple):  # Not an error
         history_storage.add_analysis(url, result)
     return jsonify(result)

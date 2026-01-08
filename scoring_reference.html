@@ -103,20 +103,20 @@
                 <div style="flex: 1; min-width: 200px; padding: 15px; background-color: #ffebee; border-radius: 5px;">
                     <h3 style="color: #c0392b; margin-top: 0;">High Risk (60+)</h3>
                     <ul style="padding-left: 20px;">
-                        <li><strong>90+ scores:</strong> 2 parameters</li>
-                        <li><strong>80-89 scores:</strong> 5 parameters</li>
-                        <li><strong>70-79 scores:</strong> 10 parameters</li>
-                        <li><strong>60-69 scores:</strong> 11 parameters</li>
-                        <li><strong>Total High Risk:</strong> 28 parameters</li>
+                        <li><strong>90+ scores:</strong> 3 parameters</li>
+                        <li><strong>80-89 scores:</strong> 7 parameters</li>
+                        <li><strong>70-79 scores:</strong> 14 parameters</li>
+                        <li><strong>60-69 scores:</strong> 15 parameters</li>
+                        <li><strong>Total High Risk:</strong> 39 parameters</li>
                     </ul>
                 </div>
                 <div style="flex: 1; min-width: 200px; padding: 15px; background-color: #fef9e7; border-radius: 5px;">
                     <h3 style="color: #d35400; margin-top: 0;">Medium Risk (30-59)</h3>
                     <ul style="padding-left: 20px;">
-                        <li><strong>50-59 scores:</strong> 6 parameters</li>
-                        <li><strong>40-49 scores:</strong> 8 parameters</li>
-                        <li><strong>30-39 scores:</strong> 7 parameters</li>
-                        <li><strong>Total Medium Risk:</strong> 21 parameters</li>
+                        <li><strong>50-59 scores:</strong> 10 parameters</li>
+                        <li><strong>40-49 scores:</strong> 11 parameters</li>
+                        <li><strong>30-39 scores:</strong> 8 parameters</li>
+                        <li><strong>Total Medium Risk:</strong> 29 parameters</li>
                     </ul>
                 </div>
                 <div style="flex: 1; min-width: 200px; padding: 15px; background-color: #e8f6f3; border-radius: 5px;">
@@ -129,7 +129,7 @@
                     </ul>
                 </div>
             </div>
-            <p><strong>Total Parameters Tracked:</strong> 70 parameters across all risk levels</p>
+            <p><strong>Total Parameters Tracked:</strong> 89 parameters across all risk levels</p>
         </div>
         
         <div class="legend">
@@ -370,6 +370,66 @@
                     <td class="risk-medium">Variable (0-20)</td>
                     <td>Query has redirect parameter</td>
                 </tr>
+                <tr class="layer1">
+                    <td>Dangerous Double Extension</td>
+                    <td class="risk-high">95</td>
+                    <td>Dangerous double file extension detected (e.g., .exe.pdf)</td>
+                </tr>
+                <tr class="layer1">
+                    <td>Very High Entropy</td>
+                    <td class="risk-high">40-90</td>
+                    <td>Very high randomness in URL path/query (entropy > 4.5)</td>
+                </tr>
+                <tr class="layer1">
+                    <td>Keyword Stuffing</td>
+                    <td class="risk-high">80</td>
+                    <td>Keyword stuffing detected with 3+ unique security keywords</td>
+                </tr>
+                <tr class="layer1">
+                    <td>Very High Encoding</td>
+                    <td class="risk-high">80</td>
+                    <td>Very high percent encoding (>25% of URL)</td>
+                </tr>
+                <tr class="layer1">
+                    <td>High Encoding</td>
+                    <td class="risk-high">60</td>
+                    <td>High percent encoding (>15% of URL)</td>
+                </tr>
+                <tr class="layer1">
+                    <td>Excessive Subdomains</td>
+                    <td class="risk-high">70</td>
+                    <td>Excessive subdomains (>5 parts)</td>
+                </tr>
+                <tr class="layer1">
+                    <td>Very Long URL</td>
+                    <td class="risk-medium">60</td>
+                    <td>Very long URL (>4000 characters)</td>
+                </tr>
+                <tr class="layer1">
+                    <td>Homograph Attack</td>
+                    <td class="risk-high">90</td>
+                    <td>Potential homograph attack characters detected</td>
+                </tr>
+                <tr class="layer1">
+                    <td>Character Repetition</td>
+                    <td class="risk-high">70</td>
+                    <td>Excessive character repetition (6+ consecutive identical chars)</td>
+                </tr>
+                <tr class="layer1">
+                    <td>Sequential Digits</td>
+                    <td class="risk-medium">45</td>
+                    <td>Consecutive digits in domain (4+ digits)</td>
+                </tr>
+                <tr class="layer1">
+                    <td>Mixed TLD Pattern</td>
+                    <td class="risk-high">75</td>
+                    <td>Suspicious TLD combination mixing legitimate and suspicious TLDs</td>
+                </tr>
+                <tr class="layer1">
+                    <td>Obfuscated Authority</td>
+                    <td class="risk-high">85</td>
+                    <td>Uses "@" in domain to hide actual host - credential harvesting</td>
+                </tr>
             </table>
         </div>
 
@@ -391,6 +451,66 @@
                     <td>Content Fetch Error</td>
                     <td class="risk-low">20</td>
                     <td>Could not fetch content due to network issues</td>
+                </tr>
+                <tr class="layer2">
+                    <td>ML Confidence (%)</td>
+                    <td class="risk-medium">N/A</td>
+                    <td>Machine learning model confidence level (0-100%)</td>
+                </tr>
+                <tr class="layer2">
+                    <td>ML Score</td>
+                    <td class="risk-medium">0-100</td>
+                    <td>Machine learning model risk score</td>
+                </tr>
+                <tr class="layer2">
+                    <td>ML Prediction</td>
+                    <td class="risk-medium">N/A</td>
+                    <td>Machine learning model prediction (Benign, Suspicious, Malicious)</td>
+                </tr>
+                <tr class="layer2">
+                    <td>Feature Count</td>
+                    <td class="risk-medium">45</td>
+                    <td>Number of features extracted for ML analysis (45 features total)</td>
+                </tr>
+                <tr class="layer2">
+                    <td>Enhanced Brand Detection</td>
+                    <td class="risk-high">Variable</td>
+                    <td>Brand impersonation detection in domain with 30+ major brands</td>
+                </tr>
+                <tr class="layer2">
+                    <td>Extended TLD Analysis</td>
+                    <td class="risk-medium">Variable</td>
+                    <td>Detection of 20+ additional suspicious TLDs</td>
+                </tr>
+                <tr class="layer2">
+                    <td>Homograph Feature</td>
+                    <td class="risk-medium">Variable</td>
+                    <td>Homograph detection included as ML feature</td>
+                </tr>
+                <tr class="layer2">
+                    <td>Double Extension Feature</td>
+                    <td class="risk-medium">Variable</td>
+                    <td>Double extension detection included as ML feature</td>
+                </tr>
+                <tr class="layer2">
+                    <td>Sequential Digit Feature</td>
+                    <td class="risk-medium">Variable</td>
+                    <td>Sequential digit detection in domain as ML feature</td>
+                </tr>
+                <tr class="layer2">
+                    <td>Malicious Pattern Feature</td>
+                    <td class="risk-medium">Variable</td>
+                    <td>Regex-based pattern matching as ML feature</td>
+                </tr>
+                <tr class="layer2">
+                    <td>Query Complexity Feature</td>
+                    <td class="risk-medium">Variable</td>
+                    <td>Query parameter complexity as ML feature</td>
+                </tr>
+                <tr class="layer2">
+                    <td>Non-ASCII Character Feature</td>
+                    <td class="risk-medium">Variable</td>
+                    <td>Detection of non-ASCII characters as ML feature</td>
                 </tr>
             </table>
         </div>
@@ -483,6 +603,146 @@
                     <td>Spelling Errors</td>
                     <td class="risk-medium">40</td>
                     <td>Common phishing misspellings detected</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Enhanced Brand Impersonation</td>
+                    <td class="risk-high">75</td>
+                    <td>Brand name mentioned multiple times in content but not in domain (40+ brands)</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Missing CSRF Token</td>
+                    <td class="risk-high">60</td>
+                    <td>Form lacks CSRF protection - potential credential harvesting</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Insecure Password Form</td>
+                    <td class="risk-high">70</td>
+                    <td>Password form submitted over unencrypted HTTP</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Urgent Action Required</td>
+                    <td class="risk-high">65</td>
+                    <td>Found multiple instances of urgent action language in content</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Account Verification Request</td>
+                    <td class="risk-high">65</td>
+                    <td>Multiple account verification requests detected in content</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Clickbait Language</td>
+                    <td class="risk-medium">65</td>
+                    <td>Found multiple instances of clickbait language in content</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Prize/Winning Scam</td>
+                    <td class="risk-medium">65</td>
+                    <td>Multiple prize or winning scam indicators in content</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Account Status Threat</td>
+                    <td class="risk-medium">65</td>
+                    <td>Multiple account status threat indicators in content</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Information Request</td>
+                    <td class="risk-medium">65</td>
+                    <td>Multiple information request indicators in content</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Banking Impersonation</td>
+                    <td class="risk-medium">65</td>
+                    <td>Multiple banking impersonation indicators in content</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Payment Related</td>
+                    <td class="risk-medium">65</td>
+                    <td>Multiple payment-related indicators in content</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Document Impersonation</td>
+                    <td class="risk-medium">65</td>
+                    <td>Multiple document impersonation indicators in content</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Suspicious External Links</td>
+                    <td class="risk-high">70</td>
+                    <td>Multiple suspicious external links found</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Dynamic URL Redirection</td>
+                    <td class="risk-high">60</td>
+                    <td>Found suspicious JavaScript patterns for dynamic redirection</td>
+                </tr>
+                <tr class="layer3">
+                    <td>DOM Manipulation</td>
+                    <td class="risk-medium">60</td>
+                    <td>Found suspicious JavaScript patterns for DOM manipulation</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Code Evaluation</td>
+                    <td class="risk-high">60</td>
+                    <td>Found suspicious JavaScript patterns for code evaluation</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Encoding/Decoding</td>
+                    <td class="risk-medium">60</td>
+                    <td>Found suspicious JavaScript patterns for encoding/decoding</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Obfuscated Regex</td>
+                    <td class="risk-medium">60</td>
+                    <td>Found suspicious obfuscated regex patterns in JavaScript</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Character Manipulation</td>
+                    <td class="risk-medium">60</td>
+                    <td>Found suspicious character manipulation in JavaScript</td>
+                </tr>
+                <tr class="layer3">
+                    <td>No Index Tag</td>
+                    <td class="risk-medium">35</td>
+                    <td>Site prevents search engine indexing</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Suspicious Brand Images</td>
+                    <td class="risk-medium">50</td>
+                    <td>Images with brand names but not in domain detected</td>
+                </tr>
+                <tr class="layer3">
+                    <td>External iFrame</td>
+                    <td class="risk-high">65</td>
+                    <td>Embedded content from external domain detected</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Free Offer Lure</td>
+                    <td class="risk-medium">55</td>
+                    <td>Social engineering lure with free offer detected</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Scarcity Lure</td>
+                    <td class="risk-medium">55</td>
+                    <td>Social engineering lure with scarcity detected</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Clickbait Lure</td>
+                    <td class="risk-medium">55</td>
+                    <td>Social engineering lure with clickbait detected</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Urgency Lure</td>
+                    <td class="risk-medium">55</td>
+                    <td>Social engineering lure with urgency detected</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Threat Lure</td>
+                    <td class="risk-medium">55</td>
+                    <td>Social engineering lure with threats detected</td>
+                </tr>
+                <tr class="layer3">
+                    <td>Fake Security Claim</td>
+                    <td class="risk-medium">50</td>
+                    <td>Claims security features but uses HTTP, not HTTPS</td>
                 </tr>
             </table>
         </div>
@@ -772,6 +1032,43 @@
         </div>
         
         <div class="section">
+            <h2>Malicious File Detection</h2>
+            <p>Detection of known malicious files, test files (like EICAR), and suspicious file types.</p>
+            <table>
+                <tr>
+                    <th>Risk Parameter</th>
+                    <th>Score</th>
+                    <th>Description</th>
+                </tr>
+                <tr class="other">
+                    <td>EICAR Test File</td>
+                    <td class="risk-high">95</td>
+                    <td>Detects EICAR antivirus test file (standard test file for antivirus systems)</td>
+                </tr>
+                <tr class="other">
+                    <td>Malicious Pattern Match</td>
+                    <td class="risk-high">80</td>
+                    <td>URL matches malicious pattern (e.g., eicar.*\.com)</td>
+                </tr>
+                <tr class="other">
+                    <td>Suspicious Download Path</td>
+                    <td class="risk-medium">40</td>
+                    <td>URL contains suspicious download path (e.g., /download/eicar.com.txt)</td>
+                </tr>
+                <tr class="other">
+                    <td>Suspicious File Extension</td>
+                    <td class="risk-high">75</td>
+                    <td>Detects potentially dangerous file extensions (exe, scr, bat, cmd, vbs, etc.)</td>
+                </tr>
+                <tr class="other">
+                    <td>Suspicious Keyword</td>
+                    <td class="risk-medium">35</td>
+                    <td>URL contains suspicious keywords in path or query</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="section">
             <h2>Advanced Features Analysis</h2>
             <p>Detailed analysis of URL structure, parameters, and advanced indicators.</p>
             <table>
@@ -992,6 +1289,11 @@
                     <td>0.09</td>
                     <td>Enhanced certificate analysis</td>
                 </tr>
+                <tr class="other">
+                    <td>Malicious File Detection</td>
+                    <td>0.40</td>
+                    <td>Detection of known malicious files, EICAR test files, and suspicious patterns</td>
+                </tr>
             </table>
         </div>
 
@@ -1011,8 +1313,9 @@
             <p>Certain conditions trigger immediate classification regardless of accumulated score:</p>
             <ul>
                 <li><strong>Early Exit on Critical Layer 1 Risks:</strong> If Layer 1 score ≥ 80, analysis stops early</li>
-                <strong>Trusted Domain Whitelist:</strong> Trusted domains automatically classified as Safe (score 0)</li>
+                <li><strong>Trusted Domain Whitelist:</strong> Trusted domains automatically classified as Safe (score 0)</li>
                 <li><strong>Maximum Score Cap:</strong> Final score is capped at 100</li>
+                <li><strong>High-Confidence Threat Override:</strong> EICAR test files and other high-confidence threats override other scores</li>
             </ul>
         </div>
     </div>
