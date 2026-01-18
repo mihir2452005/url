@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from urllib.parse import urlparse
 import threading
 import time
+import os
 from modules.lexical import lexical_risk
 from modules.domain import domain_risk
 from modules.ssl_checker import ssl_risk
@@ -430,4 +431,6 @@ def delete_history_entry(entry_id):
     return redirect(url_for('history'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    # debug=False for production
+    app.run(host='0.0.0.0', port=port, debug=False)
