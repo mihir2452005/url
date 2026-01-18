@@ -45,9 +45,8 @@ The service is configured to check this endpoint to ensure the app is running.
     *   **Value**: `3.11.9`
 3.  Trigger a new deploy (Manual Deploy > Deploy latest commit).
 
-### Error: `ModuleNotFoundError: No module named 'pandas'`
-**Cause**: The application uses `pandas` for ML features, but it was missing from the dependencies list.
+### Error: `AttributeError: module 'torch.utils._pytree' has no attribute 'register_pytree_node'`
+**Cause**: The latest version of `transformers` installed by the build is incompatible with the older pinned versions of `torch` and `sentence-transformers`.
 **Solution**:
-1.  I have added `pandas` to `requirements.txt` in the latest commit.
-2.  **Pull the latest code** locally (if needed) and ensure it is pushed to GitHub.
-3.  **Redeploy** on Render.
+1.  I have pinned `transformers` to a compatible version in `requirements.txt`.
+2.  **Pull, Push, and Redeploy**.
