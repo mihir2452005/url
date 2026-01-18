@@ -7,9 +7,10 @@ from modules.lexical import lexical_risk
 from modules.scorer import compute_score
 
 def test_lexical():
-    score, risks = lexical_risk('http://paypa1-login-secure.com')
+    # lexical_risk checks for syntax patterns like double extensions
+    score, risks = lexical_risk('http://example.com/file.exe.txt')
     assert score > 0
-    assert any('Typosquatting' in r[0] for r in risks)
+    assert any('Double Extension' in r[0] for r in risks)
 
 def test_scorer():
     risks = {'lexical': (10, []), 'domain': (5, [])}

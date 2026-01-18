@@ -47,14 +47,56 @@ class LocalUrlDetector:
         self._load_rag_models()
 
     def _load_rag_models(self):
-        """Loads local ML models if available."""
+        """Loads local ML models if available and persists embeddings."""
         try:
             from sentence_transformers import SentenceTransformer
+            import pickle
+            import os
+            
             self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-            self.known_embeddings = self.embedding_model.encode(self.known_signatures)
+            
+            # Persistence logic
+            data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
+            rag_file = os.path.join(data_dir, 'rag_embeddings.pkl')
+            
+            if os.path.exists(rag_file):
+                try:
+                    with open(rag_file, 'rb') as f:
+                        data = pickle.load(f)
+                        self.known_signatures = data['signatures']
+                        self.known_embeddings = data['embeddings']
+                        # print(f"Loaded RAG data from {rag_file}")
+                except Exception as e:
+                    print(f"Error loading RAG data: {e}. Recomputing...")
+                    self._compute_and_save(rag_file)
+            else:
+                self._compute_and_save(rag_file)
+                
             self.rag_enabled = True
         except ImportError:
             print("Local AI: sentence-transformers not found. Running in heuristic mode only.")
+
+    def _compute_and_save(self, filepath):
+        """Computes embeddings and saves them to disk."""
+        import pickle
+        import os
+        
+        # Ensure data directory exists
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        self.known_embeddings = self.embedding_model.encode(self.known_signatures)
+        
+        data = {
+            'signatures': self.known_signatures,
+            'embeddings': self.known_embeddings
+        }
+        
+        try:
+            with open(filepath, 'wb') as f:
+                pickle.dump(data, f)
+            print(f"Saved RAG data to {filepath}")
+        except Exception as e:
+            print(f"Failed to save RAG data: {e}")
 
     def analyze(self, url):
         risks = []
