@@ -349,6 +349,11 @@ def api_analyze():
         history_storage.add_analysis(url, result)
     return jsonify(result)
 
+@app.route('/healthz')
+def health_check():
+    """Health check endpoint for deployment."""
+    return jsonify({'status': 'healthy', 'components': {'ai': ai_detector.rag_enabled}}), 200
+
 @app.route('/history')
 def history():
     """Display analysis history page."""
