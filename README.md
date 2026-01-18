@@ -63,3 +63,13 @@ Each check explains theory (e.g., young domains = phishing infra).
 ML integration enhances detection accuracy and reduces false positives.
 
 License: MIT
+
+## Browser Extension
+A Chrome extension is available to scan URLs directly from your browser.
+1. Go to `chrome://extensions` > Enable Developer Mode.
+2. Click **Load unpacked** and select the `browser_extension` folder.
+3. Click the extension icon to scan the current tab.
+
+## Data Persistence
+- **History**: `data/analysis_history.json`
+- **RAG Embeddings**: `data/rag_embeddings.pkl` (Computed once and saved for fast startup).
