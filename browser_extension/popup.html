@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>URL Sentinel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h2>URL Sentinel</h2>
+    <div id="status">Ready to scan</div>
+    <div id="url-display" class="url-text"></div>
+    <button id="scan-btn">Scan Current Page</button>
+    
+    <div id="results" class="hidden">
+      <div class="score-circle">
+        <span id="score-val">--</span>
+      </div>
+      <div id="verdict" class="verdict"></div>
+      <div id="details" class="details"></div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

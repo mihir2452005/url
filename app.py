@@ -19,6 +19,10 @@ from config import Config
 app = Flask(__name__)
 app.config.from_object(Config)
 
+# Enable CORS for browser extension
+from flask_cors import CORS
+CORS(app, resources={r"/analyze": {"origins": "*"}})
+
 # Initialize Local AI Detector (loads models once)
 ai_detector = LocalUrlDetector()
 
