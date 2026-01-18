@@ -6,6 +6,25 @@ document.addEventListener('DOMContentLoaded', function () {
     const scoreVal = document.getElementById('score-val');
     const scoreCircle = document.querySelector('.score-circle');
     const verdictDiv = document.getElementById('verdict');
+    const monitorToggle = document.getElementById('monitor-toggle');
+
+    // Check monitoring status on load
+    chrome.runtime.sendMessage({ action: 'getStatus' }, (response) => {
+        if (response) {
+            monitorToggle.checked = response.isMonitoring;
+        }
+    });
+
+    // Handle toggle change
+    monitorToggle.addEventListener('change', function () {
+        if (this.checked) {
+            chrome.runtime.sendMessage({ action: 'startMonitoring' });
+            statusDiv.textContent = "Monitoring started (1hr)";
+        } else {
+            chrome.runtime.sendMessage({ action: 'stopMonitoring' });
+            statusDiv.textContent = "Monitoring stopped";
+        }
+    });
 
     // Get current tab URL
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {

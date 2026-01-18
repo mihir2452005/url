@@ -5,13 +5,30 @@
     "description": "Analyze current tab URL for threats using local URL Sentinel",
     "permissions": [
         "activeTab",
-        "scripting"
+        "scripting",
+        "storage",
+        "notifications",
+        "tabs"
     ],
     "host_permissions": [
-        "http://127.0.0.1:5000/*"
+        "http://127.0.0.1:5000/*",
+        "<all_urls>"
     ],
+    "background": {
+        "service_worker": "background.js"
+    },
     "action": {
         "default_popup": "popup.html",
         "default_title": "Scan URL"
-    }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ]
 }
