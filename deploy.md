@@ -50,3 +50,9 @@ The service is configured to check this endpoint to ensure the app is running.
 **Solution**:
 1.  I have pinned `transformers` to a compatible version in `requirements.txt`.
 2.  **Pull, Push, and Redeploy**.
+
+### Error: `Port scan timeout reached, no open ports detected on 0.0.0.0`
+**Cause**: The application was binding to `localhost` (127.0.0.1) by default, but Render requires binding to `0.0.0.0`.
+**Solution**:
+1.  I have updated `app.py` to bind to `0.0.0.0` and use the `PORT` environment variable.
+2.  **Pull, Push, and Redeploy**.
