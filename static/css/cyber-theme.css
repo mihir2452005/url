@@ -1,0 +1,370 @@
+:root {
+    --bg-color: #050508;
+    --panel-bg: #0a0a12;
+    --panel-border: #1a1a2e;
+    --text-primary: #e0e6ed;
+    --text-secondary: #94a3b8;
+
+    --neon-blue: #00f3ff;
+    --neon-green: #00ff41;
+    --neon-red: #ff003c;
+    --neon-yellow: #ffee00;
+    --neon-purple: #bc13fe;
+
+    --glass-bg: rgba(16, 16, 28, 0.7);
+    --glass-border: 1px solid rgba(0, 243, 255, 0.1);
+
+    --font-display: 'Orbitron', sans-serif;
+    --font-mono: 'Roboto Mono', monospace;
+    --font-body: 'Inter', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    background-image:
+        linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+    min-height: 100vh;
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.font-mono {
+    font-family: var(--font-mono);
+}
+
+.text-neon-blue {
+    color: var(--neon-blue);
+    text-shadow: 0 0 5px rgba(0, 243, 255, 0.5);
+}
+
+.text-neon-green {
+    color: var(--neon-green);
+    text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+}
+
+.text-neon-red {
+    color: var(--neon-red);
+    text-shadow: 0 0 5px rgba(255, 0, 60, 0.5);
+}
+
+/* Components */
+.card-cyber {
+    background: var(--glass-bg);
+    border: var(--glass-border);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    /* Angular corners for tech look */
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.card-cyber:hover {
+    border-color: rgba(0, 243, 255, 0.3);
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+}
+
+.card-cyber::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, var(--neon-blue), transparent);
+    opacity: 0.5;
+}
+
+/* Animations */
+@keyframes scanline {
+    0% {
+        transform: translateY(-100%);
+    }
+
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+.scan-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.1));
+    background-size: 100% 4px;
+    z-index: 999;
+    opacity: 0.1;
+}
+
+.scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--neon-blue);
+    box-shadow: 0 0 10px var(--neon-blue);
+    animation: scanline 3s linear infinite;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* Agent Avatar */
+.agent-container {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.agent-core {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--neon-blue), transparent);
+    box-shadow: 0 0 20px var(--neon-blue);
+    position: absolute;
+    z-index: 2;
+    transition: all 0.5s ease;
+}
+
+.agent-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid var(--neon-blue);
+    opacity: 0.6;
+    animation: rotate 10s linear infinite;
+}
+
+.ring-1 {
+    width: 100px;
+    height: 100px;
+    border-style: dashed;
+    animation-duration: 20s;
+}
+
+.ring-2 {
+    width: 120px;
+    height: 120px;
+    border-style: dotted;
+    animation-direction: reverse;
+}
+
+.ring-3 {
+    width: 140px;
+    height: 140px;
+    border: 1px solid rgba(0, 243, 255, 0.3);
+}
+
+/* Agent States */
+.agent-safe .agent-core {
+    background: radial-gradient(circle, var(--neon-green), transparent);
+    box-shadow: 0 0 20px var(--neon-green);
+}
+
+.agent-safe .agent-ring {
+    border-color: var(--neon-green);
+}
+
+.agent-suspicious .agent-core {
+    background: radial-gradient(circle, var(--neon-yellow), transparent);
+    box-shadow: 0 0 20px var(--neon-yellow);
+}
+
+.agent-suspicious .agent-ring {
+    border-color: var(--neon-yellow);
+}
+
+.agent-danger .agent-core {
+    background: radial-gradient(circle, var(--neon-red), transparent);
+    box-shadow: 0 0 20px var(--neon-red);
+}
+
+.agent-danger .agent-ring {
+    border-color: var(--neon-red);
+}
+
+@keyframes rotate {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+}
+
+.agent-pulse {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Score Gauge */
+.risk-gauge-container {
+    position: relative;
+    width: 200px;
+    height: 100px;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.risk-gauge-arc {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    border: 20px solid #1a1a2e;
+    border-top-color: var(--neon-blue);
+    /* Default */
+    border-left-color: transparent;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    transform: rotate(-135deg);
+    /* Start position */
+    transition: transform 1s ease-out, border-top-color 0.5s ease;
+}
+
+.risk-score-display {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    text-align: center;
+}
+
+/* Dashboard Elements */
+.stat-box {
+    text-align: center;
+    padding: 1rem;
+    border-right: 1px solid var(--panel-border);
+}
+
+.stat-box:last-child {
+    border-right: none;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-family: var(--font-mono);
+    font-weight: bold;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+}
+
+/* Form Styling */
+.form-control-cyber {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+.form-control-cyber:focus {
+    background: rgba(0, 0, 0, 0.5);
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+    color: white;
+}
+
+.btn-cyber {
+    background: transparent;
+    border: 1px solid var(--neon-blue);
+    color: var(--neon-blue);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-family: var(--font-display);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+}
+
+.btn-cyber:hover {
+    background: var(--neon-blue);
+    color: #000;
+    box-shadow: 0 0 15px var(--neon-blue);
+}
+
+.btn-cyber-danger {
+    border-color: var(--neon-red);
+    color: var(--neon-red);
+}
+
+.btn-cyber-danger:hover {
+    background: var(--neon-red);
+    color: white;
+    box-shadow: 0 0 15px var(--neon-red);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--neon-blue);
+}
+
+/* Risk Meters */
+.category-progress {
+    height: 6px;
+    background: #1a1a2e;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+
+.category-bar {
+    height: 100%;
+    transition: width 1s ease-in-out;
+    width: var(--bar-width, 0%);
+    background-color: var(--bar-bg, var(--neon-green));
+}

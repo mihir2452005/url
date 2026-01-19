@@ -1,273 +1,193 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <h2>Analyze URL</h2>
-        <form method="POST" onsubmit="const btn = this.querySelector('button[type=submit]'); btn.disabled=true; btn.innerHTML='<span class='spinner-border spinner-border-sm' role='status' aria-hidden='true'></span> Analyzing...';">
-            <div class="mb-3">
-                <label for="url" class="form-label">Enter URL:</label>
-                <input type="url" class="form-control" id="url" name="url" required>
-            </div>
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="include_layered_analysis" name="include_layered_analysis" value="true" {% if include_layered_analysis %}checked{% endif %}>
-                <label class="form-check-label" for="include_layered_analysis">Include Layered Analysis (Static + Reputation + Content)</label>
-            </div>
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="use_combined_analysis" name="use_combined_analysis" value="true" {% if use_combined_analysis %}checked{% endif %}>
-                <label class="form-check-label" for="use_combined_analysis">Use Combined Analysis (Rule-based + ML)</label>
-            </div>
-            <button type="submit" class="btn btn-primary">Analyze</button>
-            <button type="button" class="btn btn-secondary" onclick="document.getElementById('url').value='';">Clear</button>
-            <a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
-        </form>
-    </div>
-    <div class="col-md-4">
-        <div class="card bg-light">
-            <div class="card-body">
-                <h6 class="card-title">About This Tool</h6>
-                <p class="small mb-0">Advanced local URL threat detection using multi-layer analysis without external APIs.</p>
-            </div>
+
+<!-- AI Agent & Search Section -->
+<div class="row justify-content-center mb-5">
+    <div class="col-md-8 text-center">
+
+        <!-- Agent Visualization -->
+        <div class="agent-container mb-4" id="agent-visual">
+            <div class="agent-core"></div>
+            <div class="agent-ring ring-1"></div>
+            <div class="agent-ring ring-2"></div>
+            <div class="agent-ring ring-3"></div>
+        </div>
+
+        <h3 class="mb-3 font-mono" id="agent-status-text">SYSTEM READY // AWAITING INPUT</h3>
+
+        <!-- Search Form -->
+        <div class="card-cyber p-4">
+            <form method="POST" id="analyze-form">
+                <div class="input-group input-group-lg mb-3">
+                    <span class="input-group-text bg-transparent border-secondary text-neon-blue font-mono">></span>
+                    <input type="url" class="form-control form-control-cyber" id="url" name="url"
+                        placeholder="ENTER URL FOR ANALYSIS..." required value="{{ url if url else '' }}"
+                        autocomplete="off">
+                    <button type="submit" class="btn btn-cyber">INITIATE SCAN</button>
+                </div>
+
+                <div class="d-flex justify-content-center gap-4 mt-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input bg-dark border-secondary" type="checkbox"
+                            id="include_layered_analysis" name="include_layered_analysis" value="true" {% if
+                            include_layered_analysis is not defined or include_layered_analysis %}checked{% endif %}>
+                        <label class="form-check-label text-secondary font-mono small"
+                            for="include_layered_analysis">LAYERED_SCAN</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input bg-dark border-secondary" type="checkbox"
+                            id="use_combined_analysis" name="use_combined_analysis" value="true" {% if
+                            use_combined_analysis is not defined or use_combined_analysis %}checked{% endif %}>
+                        <label class="form-check-label text-secondary font-mono small"
+                            for="use_combined_analysis">AI_COMBINED_MODE</label>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
 {% if result %}
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="alert alert-{{ 'success' if result.score < 30 else 'warning' if result.score < 70 else 'danger' }}">
-            <h4>Risk Score: {{ result.score }}/100 ({{ result.classification }})
-                {% if result.ml_override %}
-                    <span class="badge bg-primary">ML Override Active</span>
-                {% endif %}
-            </h4>
-            {% if result.verdict %}
-                <p><strong>Verdict:</strong> {{ result.verdict }} | <strong>Confidence:</strong> {{ result.confidence|round(1) }}%</p>
-                {% if result.ml_analysis and result.ml_analysis.confidence > 0.8 %}
-                    <p class="mb-0">
-                        <small class="text-{{ 'success' if result.ml_analysis.prediction == 'Benign' else 'danger' }}">
-                            <strong>ML Analysis:</strong> {{ result.ml_analysis.prediction }} ({{ (result.ml_analysis.confidence * 100)|round(1) }}% confidence)
-                            {% if result.ml_analysis.score %}(Score: {{ result.ml_analysis.score }}/100){% endif %}
-                        </small>
-                    </p>
-                {% endif %}
-            {% endif %}
-            {% if result.error %}
-                <p class="alert-heading">{{ result.error }}</p>
-            {% else %}
-                <canvas id="riskChart" width="400" height="{{ result.breakdown.keys()|list|length * 35 + 180 }}"></canvas>
-                <div id="breakdown">
-                    {% for cat, data in result.breakdown.items() %}
-                    <details class="mt-2">
-                        <summary>{{ cat.title() }}: {{ data.weighted|round(1) }} (Details)</summary>
-                        <ul>
-                            {% for name, wt, expl in data.details %}
-                            <li><strong>{{ name }}</strong> (+{{ wt }}): {{ expl }}</li>
-                            {% endfor %}
-                        </ul>
-                    </details>
-                    {% endfor %}
-                    
-                    {% if result.layered_analysis %}
-                    <details class="mt-3">
-                        <summary>Layered Analysis Results (Click to expand)</summary>
-                        <div class="card mt-2">
-                            <div class="card-body">
-                                <h6>Final Result: {{ result.layered_analysis.final_score }}/100 ({{ result.layered_analysis.classification }})</h6>
-                                <p class="mb-1">{{ result.layered_analysis.details }}</p>
-                                {% if result.layered_analysis.early_exit %}
-                                    <p class="text-warning">Early Exit at: {{ result.layered_analysis.early_exit }}</p>
-                                {% endif %}
-                                
-                                <div class="row mt-3">
-                                    {% for layer_name, layer_data in result.layered_analysis.layers.items() %}
-                                    <div class="col-md-4">
-                                        <div class="card">
-                                            <div class="card-header bg-{{ 'success' if layer_data.status == 'PASS' else 'danger' }} text-white">
-                                                {{ layer_name.replace('_', ' ').title() }}
-                                            </div>
-                                            <div class="card-body">
-                                                <p class="card-text"><strong>Score:</strong> {{ layer_data.score }}</p>
-                                                <p class="card-text"><strong>Status:</strong> {{ layer_data.status }}</p>
-                                                {% if layer_data.risks %}
-                                                    <ul class="small">
-                                                        {% for risk_name, risk_score, risk_desc in layer_data.risks %}
-                                                        <li><strong>{{ risk_name }}</strong> ({{ risk_score }}): {{ risk_desc[:50] }}{% if risk_desc|length > 50 %}...{% endif %}</li>
-                                                        {% endfor %}
-                                                    </ul>
-                                                {% else %}
-                                                    <p class="text-muted small">No risks detected</p>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                    </details>
-                    {% endif %}
-                    
-                    {% if result.ml_analysis %}
-                    <details class="mt-3">
-                        <summary>Machine Learning Analysis Results (Click to expand)</summary>
-                        <div class="card mt-2">
-                            <div class="card-body">
-                                <h6>ML Prediction: {{ result.ml_analysis.prediction }} | Confidence: {{ (result.ml_analysis.confidence * 100)|round(1) }}%</h6>
-                                <p class="mb-1"><strong>ML Score:</strong> {{ result.ml_analysis.score }}/100</p>
-                                
-                                {% if result.ml_analysis.details %}
-                                <div class="mt-2">
-                                    <h7>ML Risk Factors:</h7>
-                                    <ul class="small">
-                                        {% for item in result.ml_analysis.details %}
-                                        {% if item|length >= 3 %}
-                                            {% set risk_name = item[0] %}
-                                            {% set risk_score = item[1] %}
-                                            {% set risk_desc = item[2] %}
-                                            {% if risk_score > 0 %}
-                                            <li><strong>{{ risk_name }}</strong> ({{ risk_score }}): {{ risk_desc[:80] }}{% if risk_desc|length > 80 %}...{% endif %}</li>
-                                            {% endif %}
-                                        {% endif %}
-                                        {% endfor %}
-                                    </ul>
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </details>
-                    {% endif %}
+<!-- PASS BACKEND RESULT TO FRONTEND JS -->
+<script>
+    window.serverResult = {{ result | tojson | safe }};
+</script>
+
+<!-- New Dashboard Layout -->
+<div class="row g-4 fade-in-up">
+    <!-- Left Column: Score & Stats -->
+    <div class="col-lg-4">
+        <!-- Main Verdict Card -->
+        <div class="card-cyber p-4 h-100 text-center">
+            <h5 class="text-secondary font-mono mb-4">THREAT_ASSESSMENT_GAUGE</h5>
+
+            <div class="risk-gauge-container">
+                <div class="risk-gauge-arc" id="risk-gauge-arc"></div>
+                <div class="risk-score-display display-1 fw-bold text-white mb-0" id="risk-score-display">0</div>
+            </div>
+
+            <h2 class="mt-4 mb-2 text-white">{{ result.classification|upper }}</h2>
+            <div class="badge bg-transparent border border-secondary text-secondary font-mono mb-3">
+                CONFIDENCE: {{ result.confidence|round(1) }}%
+            </div>
+
+            <!-- Parameters Summary -->
+            <div class="d-flex justify-content-around mt-4 pt-3 border-top border-secondary">
+                <div class="stat-box">
+                    <div class="stat-value text-white" id="stat-total-checks">0</div>
+                    <div class="stat-label">TOTAL PARAMS</div>
                 </div>
+                <div class="stat-box">
+                    <div class="stat-value text-neon-red" id="stat-failed-checks">0</div>
+                    <div class="stat-label">ANOMALIES</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Detailed Breakdown -->
+    <div class="col-lg-8">
+        <!-- AI Explanation Card -->
+        <div class="card-cyber p-4 mb-4">
+            <h5 class="text-neon-blue font-mono mb-2"> <i class="bi bi-robot"></i> AGENT_INSIGHT</h5>
+            <p class="mb-0 text-light lead fs-6 font-mono" id="ai-explanation">
+                Loading analysis interpretation...
+            </p>
+        </div>
+
+        <!-- Category Breakdown -->
+        <div class="card-cyber p-4">
+            <h5 class="text-secondary font-mono mb-4">DETAILED_VECTOR_ANALYSIS</h5>
+
+            <div class="row">
+                {% for cat, data in result.breakdown.items() %}
+                <div class="col-md-6 mb-4">
+                    <div class="d-flex justify-content-between align-items-end mb-1">
+                        <span class="font-mono text-uppercase small text-light">{{ cat }}</span>
+                        <span class="text-neon-blue small">{{ data.weighted|round(1) }} RISK</span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="category-progress">
+                        <!-- Width and color handled by CSS variables to appease linters -->
+                        <div class="category-bar bg-gradient"
+                            style="--bar-width: {{ [data.weighted * 2, 5]|max }}%; --bar-bg: {{ 'var(--neon-green)' if data.weighted < 10 else 'var(--neon-red)' }}">
+                        </div>
+                    </div>
+
+                    <!-- Expandable Details -->
+                    <div class="mt-2">
+                        <details>
+                            <summary class="text-secondary small font-mono">VIEW LOGS</summary>
+                            <ul class="list-unstyled mt-2 small text-light ps-3 border-start border-secondary">
+                                {% for name, wt, expl in data.details %}
+                                {% if wt > 0 %}
+                                <li class="mb-1 text-neon-red">
+                                    [!] {{ name }}: {{ expl }}
+                                </li>
+                                {% else %}
+                                <li class="mb-1 text-muted">
+                                    [√] {{ name }}
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                            </ul>
+                        </details>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if result.ml_analysis %}
+            <hr class="border-secondary my-4">
+            <h5 class="text-neon-purple font-mono mb-3">MACHINE_LEARNING_PREDICTION</h5>
+            <div class="p-3 border border-secondary rounded" style="background: rgba(188, 19, 254, 0.05);">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="d-block font-mono text-uppercase">MODEL VERDICT</span>
+                        <strong class="fs-4 text-light">{{ result.ml_analysis.prediction }}</strong>
+                    </div>
+                    <div>
+                        <span class="d-block font-mono text-uppercase">CONFIDENCE</span>
+                        <strong class="fs-4 text-neon-purple">{{ (result.ml_analysis.confidence * 100)|round(1)
+                            }}%</strong>
+                    </div>
+                </div>
+            </div>
             {% endif %}
         </div>
     </div>
 </div>
-    {% endif %}  <!-- End of main result block -->
-<script>
-    {% if result and result.breakdown %}
-    const breakdownKeys = {{ result.breakdown.keys()|list|tojson | safe }};
-    const breakdownData = {{ chart_data | tojson | safe }};
-    
-    // Prepare ML data if available
-    let mlKeys = [];
-    let mlData = [];
-    let mlAvailable = false;
-    
-    if (typeof result.ml_analysis !== 'undefined' && result.ml_analysis) {
-        mlAvailable = true;
-        mlKeys = ['ML Confidence (%)', 'ML Score', 'ML Prediction'];
-        mlData = [Math.round(result.ml_analysis.confidence * 100), result.ml_analysis.score, result.ml_analysis.prediction === 'Malicious' ? 100 : result.ml_analysis.prediction === 'Suspicious' ? 50 : 0];
-    }
-    
-    const ctx = document.getElementById('riskChart')?.getContext('2d');
-    if (ctx && typeof Chart !== 'undefined') {
-        let labels = [];
-        let data = [];
-        let backgroundColors = [];
-        let borderColors = [];
-        
-        // Add ML data first if available
-        if (mlAvailable) {
-            labels = [...mlKeys, ...breakdownKeys];
-            data = [...mlData, ...breakdownData];
-            
-            // Use distinct colors for ML data
-            backgroundColors = [
-                '#007bff', // ML Confidence - blue
-                '#6610f2', // ML Score - indigo
-                '#e83e8c', // ML Prediction - pink
-                ...Array(breakdownKeys.length).fill().map((_, i) => [
-                    '#28a745', '#ffc107', '#fd7e14', '#dc3545',
-                    '#6f42c1', '#20c997', '#6c757d', '#17a2b8'
-                ][i % 8])
-            ];
-            
-            borderColors = [
-                '#005cbf', // ML Confidence border
-                '#520dc2', // ML Score border
-                '#c22e79', // ML Prediction border
-                ...Array(breakdownKeys.length).fill().map((_, i) => [
-                    '#1e7e34', '#d39e00', '#e06c00', '#bd2130',
-                    '#5a32a3', '#198776', '#545b62', '#117a8b'
-                ][i % 8])
-            ];
-        } else {
-            labels = breakdownKeys;
-            data = breakdownData;
-            backgroundColors = breakdownKeys.map((_, i) => [
-                '#28a745', '#ffc107', '#fd7e14', '#dc3545',
-                '#6f42c1', '#20c997', '#6c757d', '#17a2b8'
-            ][i % 8]);
-            borderColors = breakdownKeys.map((_, i) => [
-                '#1e7e34', '#d39e00', '#e06c00', '#bd2130',
-                '#5a32a3', '#198776', '#545b62', '#117a8b'
-            ][i % 8]);
-        }
-        
-        const chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Risk & ML Analysis',
-                    data: data,
-                    backgroundColor: backgroundColors,
-                    borderColor: borderColors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                indexAxis: 'y', // Horizontal bars
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.dataset.label || '';
-                                const value = context.parsed.x;
-                                
-                                // Customize tooltip based on the category
-                                if (context.label.includes('ML Confidence')) {
-                                    return `${context.label}: ${value}%`;
-                                } else if (context.label.includes('ML Score')) {
-                                    return `${context.label}: ${value}/100`;
-                                } else if (context.label.includes('ML Prediction')) {
-                                    // Convert numeric value back to prediction string for display
-                                    let predictionText = '';
-                                    if (value === 100) predictionText = 'Malicious';
-                                    else if (value === 50) predictionText = 'Suspicious';
-                                    else predictionText = 'Benign';
-                                    return `${context.label}: ${predictionText}`;
-                                } else {
-                                    return `${context.label}: ${value} points`;
-                                }
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Values'
-                        },
-                        beginAtZero: true,
-                        max: mlAvailable ? 100 : 100
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Analysis Categories'
-                        }
-                    }
-                }
-            }
-        });
-    }
-</script>
 {% endif %}
+
+<div class="alert alert-dark border-secondary mt-5" role="alert">
+    <div class="d-flex align-items-center">
+        <div class="text-neon-yellow fs-3 me-3"><i class="bi bi-shield-lock"></i></div>
+        <div>
+            <h6 class="alert-heading font-mono text-neon-yellow">INTELLIGENCE AUGMENTATION // RESEARCH EDITION</h6>
+            <small class="text-light">
+                Engineered for advanced threat modeling and educational analysis.
+                This system leverages experimental heuristic algorithms to detect complex attack vectors.
+                Designed to augment human security analysts, not replace comprehensive defense protocols.
+            </small>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Animation ensure */
+    .fade-in-up {
+        animation: fadeInUp 0.5s ease-out forwards;
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
 
 {% endblock %}

@@ -378,6 +378,8 @@ def history():
                           total_pages=total_pages,
                           total=total)
 
+
+
 @app.route('/history/<entry_id>')
 def history_detail(entry_id):
     """Display detailed view of a specific analysis."""

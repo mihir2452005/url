@@ -1,34 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>URL Sentinel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Sentinel AI | Threat Detection Unit</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Bootstrap & Custom Styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cyber-theme.css') }}">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
-    <nav class="navbar navbar-dark bg-dark navbar-expand-lg">
+    <!-- Scanline Overlay -->
+    <div class="scan-overlay">
+        <div class="scan-line"></div>
+    </div>
+
+    <nav class="navbar navbar-expand-lg border-bottom"
+        style="background: rgba(10, 10, 18, 0.9); border-color: rgba(0, 243, 255, 0.1) !important;">
         <div class="container">
-            <span class="navbar-brand">URL Sentinel: Advanced Threat Analyzer</span>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <a class="navbar-brand text-neon-blue font-mono" href="{{ url_for('index') }}">
+                [URL_SENTINEL_AI]
+            </a>
+            <button class="navbar-toggler bg-secondary" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">Analyze URL</a>
+                        <a class="nav-link text-light font-mono" href="{{ url_for('index') }}">>_ ANALYZE</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('history') }}">History</a>
+                        <a class="nav-link text-light font-mono" href="{{ url_for('history') }}">>_ LOGS</a>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
-    <div class="container mt-4">
+
+    <div class="container mt-5 mb-5 ps-3 pe-3">
         {% block content %}{% endblock %}
     </div>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+    <footer class="text-center mt-5 py-3 text-secondary border-top"
+        style="border-color: rgba(0, 243, 255, 0.1) !important;">
+        <small class="font-mono">URL SENTINEL V2.0 // NEXT-GEN THREAT INTELLIGENCE // RESEARCH PROTOCOL ACTIVE</small>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/cyber-agent.js') }}"></script>
+    {% block scripts %}{% endblock %}
 </body>
+
 </html>

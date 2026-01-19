@@ -1,175 +1,279 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="row mb-4">
-    <div class="col-md-12">
-        <h2>Analysis History</h2>
-        <p class="text-muted">View and manage your URL analysis history</p>
+
+<!-- Page Header -->
+<div class="row mb-5">
+    <div class="col-md-12 text-center">
+        <h2 class="text-neon-blue font-mono glitch-text">OPERATION LOGS // HISTORY</h2>
+        <p class="text-secondary font-mono small">ARCHIVED THREAT INTELLIGENCE DATA</p>
     </div>
 </div>
 
-<!-- Statistics Cards -->
-<div class="row mb-4">
+<!-- Statistics HUD -->
+<div class="row mb-5 g-4">
     <div class="col-md-3">
-        <div class="card bg-light">
-            <div class="card-body">
-                <h6 class="card-title text-muted">Total Analyses</h6>
-                <h3 class="mb-0">{{ stats.total_analyses }}</h3>
-            </div>
+        <div class="card-cyber p-3 text-center h-100">
+            <small class="text-secondary font-mono d-block mb-2">TOTAL SCANS</small>
+            <h2 class="text-white font-mono display-5">{{ stats.total_analyses }}</h2>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card border-success">
-            <div class="card-body">
-                <h6 class="card-title text-success">Safe</h6>
-                <h4 class="mb-0 text-success">{{ stats.safe_count }}</h4>
-            </div>
+        <div class="card-cyber p-3 text-center h-100" style="border-color: rgba(0, 255, 157, 0.3) !important;">
+            <small class="text-neon-green font-mono d-block mb-2">SECURE</small>
+            <h3 class="text-neon-green font-mono">{{ stats.safe_count }}</h3>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card border-warning">
-            <div class="card-body">
-                <h6 class="card-title text-warning">Suspicious</h6>
-                <h4 class="mb-0 text-warning">{{ stats.suspicious_count }}</h4>
-            </div>
+        <div class="card-cyber p-3 text-center h-100" style="border-color: rgba(243, 235, 13, 0.3) !important;">
+            <small class="text-neon-yellow font-mono d-block mb-2">SUSPICIOUS</small>
+            <h3 class="text-neon-yellow font-mono">{{ stats.suspicious_count }}</h3>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card border-danger">
-            <div class="card-body">
-                <h6 class="card-title text-danger">Phishing</h6>
-                <h4 class="mb-0 text-danger">{{ stats.phishing_count }}</h4>
-            </div>
+        <div class="card-cyber p-3 text-center h-100" style="border-color: rgba(255, 42, 109, 0.3) !important;">
+            <small class="text-neon-red font-mono d-block mb-2">PHISHING</small>
+            <h3 class="text-neon-red font-mono">{{ stats.phishing_count }}</h3>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card border-dark">
-            <div class="card-body">
-                <h6 class="card-title text-dark">Malicious</h6>
-                <h4 class="mb-0 text-dark">{{ stats.malicious_count }}</h4>
-            </div>
+        <div class="card-cyber p-3 text-center h-100" style="border-color: rgba(188, 19, 254, 0.3) !important;">
+            <small class="text-neon-purple font-mono d-block mb-2">MALICIOUS</small>
+            <h3 class="text-neon-purple font-mono">{{ stats.malicious_count }}</h3>
         </div>
     </div>
 </div>
 
-<!-- Search and Filter -->
-<div class="row mb-3">
-    <div class="col-md-12">
-        <form method="GET" action="{{ url_for('history_search') }}" class="row g-3">
-            <div class="col-md-4">
-                <input type="text" class="form-control" name="q" placeholder="Search URL..." value="{{ search_query or '' }}">
+<!-- Command Bar -->
+<div class="card-cyber p-4 mb-5">
+    <form method="GET" action="{{ url_for('history_search') }}" class="row g-3 align-items-center">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text bg-transparent border-secondary text-neon-blue font-mono">></span>
+                <input type="text" class="form-control form-control-cyber text-light" name="q"
+                    placeholder="QUERY PROTOCOL..." value="{{ search_query or '' }}">
             </div>
-            <div class="col-md-3">
-                <select class="form-select" name="verdict">
-                    <option value="">All Verdicts</option>
-                    <option value="Safe" {% if search_verdict == 'Safe' %}selected{% endif %}>Safe</option>
-                    <option value="Suspicious" {% if search_verdict == 'Suspicious' %}selected{% endif %}>Suspicious</option>
-                    <option value="Phishing" {% if search_verdict == 'Phishing' %}selected{% endif %}>Phishing</option>
-                    <option value="Malicious" {% if search_verdict == 'Malicious' %}selected{% endif %}>Malicious</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Search</button>
-            </div>
-            <div class="col-md-3">
-                <form method="POST" action="{{ url_for('clear_history') }}" style="display:inline;" 
-                      onsubmit="return confirm('Are you sure you want to clear all history? This cannot be undone.');">
-                    <button type="submit" class="btn btn-danger w-100">Clear All History</button>
-                </form>
-            </div>
-        </form>
-    </div>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select bg-dark text-light border-secondary font-mono" name="verdict">
+                <option value="">ALL CLASSIFICATIONS</option>
+                <option value="Safe" {% if search_verdict=='Safe' %}selected{% endif %}>SAFE</option>
+                <option value="Suspicious" {% if search_verdict=='Suspicious' %}selected{% endif %}>SUSPICIOUS</option>
+                <option value="Phishing" {% if search_verdict=='Phishing' %}selected{% endif %}>PHISHING</option>
+                <option value="Malicious" {% if search_verdict=='Malicious' %}selected{% endif %}>MALICIOUS</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-cyber w-100">EXECUTE SEARCH</button>
+        </div>
+        <div class="col-md-3 text-end">
+            <form method="POST" action="{{ url_for('clear_history') }}" style="display:inline;"
+                onsubmit="return confirm('DANGER: This will permanently purge all intelligence logs. Proceed?');">
+                <button type="submit" class="btn btn-outline-danger w-100 font-mono">
+                    <i class="bi bi-trash3-fill"></i> PURGE LOGS
+                </button>
+            </form>
+        </div>
+    </form>
 </div>
 
-<!-- History Table -->
+<!-- Intelligence Data Grid -->
 <div class="row">
     <div class="col-md-12">
         {% if history %}
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>URL</th>
-                        <th>Verdict</th>
-                        <th>Risk Score</th>
-                        <th>Confidence</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for entry in history %}
-                    <tr>
-                        <td>{{ entry.timestamp[:19].replace('T', ' ') }}</td>
-                        <td class="text-truncate" style="max-width: 300px;">
-                            <div class="d-flex align-items-center">
-                                <a href="{{ url_for('history_detail', entry_id=entry.id) }}" class="text-decoration-none flex-grow-1">
-                                    {{ entry.url }}
-                                </a>
-                                <button class="btn btn-sm btn-outline-secondary ms-2" 
-                                        onclick="copyToClipboard('{{ entry.url }}')" 
-                                        title="Copy URL to clipboard">
-                                    📋
-                                </button>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="badge bg-{{ 'success' if entry.verdict == 'Safe' else 'warning' if entry.verdict == 'Suspicious' else 'danger' }}">
-                                {{ entry.verdict }}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="badge bg-{{ 'success' if entry.score < 35 else 'warning' if entry.score < 75 else 'danger' }}">
-                                {{ entry.score|round(1) }}/100
-                            </span>
-                        </td>
-                        <td>{{ entry.confidence|round(1) }}%</td>
-                        <td>
-                            <a href="{{ url_for('history_detail', entry_id=entry.id) }}" class="btn btn-sm btn-info">View</a>
-                            <form method="POST" action="{{ url_for('delete_history_entry', entry_id=entry.id) }}" style="display:inline;"
-                                  onsubmit="return confirm('Delete this entry?');">
-                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="card-cyber p-0 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0" style="background: transparent;">
+                    <thead>
+                        <tr class="border-secondary text-secondary font-mono small">
+                            <th class="p-3">TIMESTAMP</th>
+                            <th class="p-3">TARGET URL</th>
+                            <th class="p-3">VERDICT</th>
+                            <th class="p-3">RISK Lvl</th>
+                            <th class="p-3">CONFIDENCE</th>
+                            <th class="p-3 text-end">OPERATIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top border-secondary">
+                        {% for entry in history %}
+                        <tr class="align-middle border-secondary"
+                            style="border-bottom-width: 1px; --bs-table-bg: transparent;">
+                            <td class="p-3 font-mono small text-secondary">{{ entry.timestamp[:19].replace('T', ' ') }}
+                            </td>
+
+                            <!-- URL with Professional Copy Input Group -->
+                            <td class="p-3">
+                                <div class="input-group input-group-sm">
+                                    <input type="text"
+                                        class="form-control form-control-cyber text-light font-mono bg-transparent border-secondary"
+                                        value="{{ entry.url }}" readonly title="{{ entry.url }}"
+                                        style="border-right: none; min-width: 300px;">
+                                    <button
+                                        class="btn btn-outline-secondary border-secondary text-neon-blue js-copy-btn"
+                                        type="button" data-clipboard-text="{{ entry.url }}" title="COPY TO CLIPBOARD">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </td>
+
+                            <td class="p-3">
+                                {% if entry.verdict == 'Safe' %}
+                                <span
+                                    class="badge bg-transparent border border-success text-success font-mono">SAFE</span>
+                                {% elif entry.verdict == 'Suspicious' %}
+                                <span
+                                    class="badge bg-transparent border border-warning text-warning font-mono">SUSPICIOUS</span>
+                                {% else %}
+                                <span
+                                    class="badge bg-transparent border border-danger text-danger font-mono">THREAT</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-3">
+                                <span
+                                    class="font-mono {{ 'text-neon-green' if entry.score < 35 else 'text-neon-yellow' if entry.score < 75 else 'text-neon-red' }}">
+                                    {{ entry.score|round(1) }}
+                                </span>
+                            </td>
+                            <td class="p-3 font-mono text-secondary">{{ entry.confidence|round(1) }}%</td>
+                            <td class="p-3 text-end">
+                                <a href="{{ url_for('history_detail', entry_id=entry.id) }}"
+                                    class="btn btn-sm btn-outline-light me-1" title="VIEW DETAILS"><i
+                                        class="bi bi-eye"></i></a>
+                                <form method="POST" action="{{ url_for('delete_history_entry', entry_id=entry.id) }}"
+                                    style="display:inline;" onsubmit="return confirm('Delete this entry?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="DELETE RECORD"><i
+                                            class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
-        
-        <!-- Pagination -->
+
+        <!-- Pagination (Cyber Style) -->
         {% if total_pages > 1 %}
-        <nav aria-label="Page navigation">
+        <nav aria-label="Page navigation" class="mt-4">
             <ul class="pagination justify-content-center">
                 {% if page > 1 %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('history', page=page-1) }}">Previous</a>
+                    <a class="page-link bg-transparent border-secondary text-neon-blue font-mono"
+                        href="{{ url_for('history', page=page-1) }}">
+                        < PREV</a>
                 </li>
                 {% endif %}
-                
+
                 {% for p in range(1, total_pages + 1) %}
-                    {% if p == page %}
-                    <li class="page-item active"><span class="page-link">{{ p }}</span></li>
-                    {% elif p <= 3 or p > total_pages - 3 or (p >= page - 1 and p <= page + 1) %}
-                    <li class="page-item"><a class="page-link" href="{{ url_for('history', page=p) }}">{{ p }}</a></li>
-                    {% elif p == 4 or p == total_pages - 3 %}
-                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                    {% endif %}
-                {% endfor %}
-                
-                {% if page < total_pages %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('history', page=page+1) }}">Next</a>
-                </li>
-                {% endif %}
+                {% if p == page %}
+                <li class="page-item active"><span class="page-link bg-dark border-secondary text-neon-blue font-mono"
+                        style="border-color: var(--neon-blue) !important;">{{ p }}</span></li>
+                {% elif p <= 3 or p> total_pages - 3 or (p >= page - 1 and p <= page + 1) %} <li class="page-item"><a
+                            class="page-link bg-transparent border-secondary text-secondary font-mono"
+                            href="{{ url_for('history', page=p) }}">{{ p }}</a></li>
+                        {% endif %}
+                        {% endfor %}
+
+                        {% if page < total_pages %} <li class="page-item">
+                            <a class="page-link bg-transparent border-secondary text-neon-blue font-mono"
+                                href="{{ url_for('history', page=page+1) }}">NEXT ></a>
+                            </li>
+                            {% endif %}
             </ul>
         </nav>
         {% endif %}
-        
+
         {% else %}
-        <div class="alert alert-info">
-            <p class="mb-0">No analysis history found. <a href="{{ url_for('index') }}">Analyze your first URL</a></p>
+        <div class="alert alert-dark border-secondary text-center mt-4">
+            <p class="mb-0 text-secondary font-mono">NO INTELLIGENCE LOGS FOUND. <a href="{{ url_for('index') }}"
+                    class="text-neon-blue">INITIATE NEW SCAN</a></p>
         </div>
         {% endif %}
     </div>
 </div>
+
+<script>
+    console.log('History page scripts loaded via Event Delegation');
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Event delegation for copy buttons
+        document.body.addEventListener('click', function (e) {
+            // Find closest button with js-copy-btn class
+            const btn = e.target.closest('.js-copy-btn');
+            if (!btn) return;
+
+            const text = btn.getAttribute('data-clipboard-text');
+            if (text) {
+                copyToClipboard(text, btn);
+            }
+        });
+    });
+
+    function copyToClipboard(text, btnElement) {
+        console.log('Copy requested for:', text);
+        // Fallback for non-secure contexts (HTTP)
+        if (!navigator.clipboard) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                const msg = successful ? 'successful' : 'unsuccessful';
+                console.log('Fallback copy result:', msg);
+                showFeedback(btnElement, true);
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert('Failed to copy URL. Please copy manually.');
+            }
+
+            document.body.removeChild(textArea);
+            return;
+        }
+
+        // Modern API
+        navigator.clipboard.writeText(text).then(() => {
+            console.log('Clipboard API success');
+            showFeedback(btnElement, true);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            // Try fallback if modern API fails (e.g. permission denied)
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showFeedback(btnElement, true);
+            } catch (fallbackErr) {
+                alert('Failed to copy URL to clipboard');
+            }
+        });
+    }
+
+    function showFeedback(btnElement, success) {
+        const originalHtml = btnElement.innerHTML;
+        const originalClass = btnElement.className;
+
+        btnElement.innerHTML = '<i class="bi bi-check-lg"></i>';
+        // Preserve original classes but add success state
+        btnElement.classList.remove('btn-outline-secondary', 'text-neon-blue');
+        btnElement.classList.add('btn-success', 'border-success', 'text-white');
+
+        setTimeout(() => {
+            btnElement.innerHTML = originalHtml;
+            // Restore original classes
+            btnElement.className = originalClass;
+        }, 2000);
+    }
+</script>
 {% endblock %}
