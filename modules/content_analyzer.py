@@ -1,10 +1,14 @@
-import requests
+import aiohttp
+import asyncio
 from bs4 import BeautifulSoup
 import re
 from urllib.parse import urlparse, urljoin
 import socket
 import whois
 from datetime import datetime
+import hashlib
+import json
+import os
 import warnings
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
@@ -15,7 +19,57 @@ def get_last_soup():
     """Return the last soup object for advanced analysis."""
     return _last_soup
 
-def content_risk(url):
+def load_brand_favicons():
+    """Load known brand favicon hashes."""
+    try:
+        data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'brand_favicons.json')
+        if os.path.exists(data_path):
+            with open(data_path, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error loading brand favicons: {e}")
+    return {}
+
+async def check_favicon(url, soup, session, domain):
+    """
+    Check if the site's favicon matches a known brand but domain doesn't match.
+    Returns: (score_modifier, risk_entry_or_None)
+    """
+    try:
+        # Find favicon URL
+        icon_link = soup.find("link", rel=lambda x: x and 'icon' in x.lower())
+        if not icon_link:
+            # Try default /favicon.ico
+            favicon_url = urljoin(url, '/favicon.ico')
+        else:
+            favicon_url = urljoin(url, icon_link.get('href'))
+
+        # Fetch favicon
+        try:
+            async with session.get(favicon_url, timeout=5, ssl=False) as resp:
+                if resp.status == 200:
+                    content = await resp.read()
+                    # Compute hash (MD5 of content)
+                    favicon_hash = hashlib.md5(content).hexdigest()[:8] # First 8 chars for brevity/demo
+                    
+                    brands_db = load_brand_favicons()
+                    
+                    # Check against DB
+                    for brand, known_hash in brands_db.items():
+                        if favicon_hash == known_hash:
+                            # Match found! Check if domain matches brand
+                            if brand not in domain.lower():
+                                return 90, ('Favicon Impersonation', 90, f'Site uses {brand.capitalize()} favicon but domain is not {brand}')
+        except:
+            pass # Favicon fetch failed, ignore
+            
+    except Exception as e:
+        pass
+    
+    return 0, None
+
+
+async def content_risk(url):
     """Analyze URL content for malicious indicators with enhanced zero-day phishing detection."""
     global _last_soup
     risks = []
@@ -29,10 +83,24 @@ def content_risk(url):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         
-        response = requests.get(url, headers=headers, timeout=10, verify=False)
-        _last_soup = BeautifulSoup(response.content, 'html.parser')
-        soup = _last_soup
-        
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(url, headers=headers, timeout=10, ssl=False) as response:
+                    content_text = await response.text()
+                    _last_soup = BeautifulSoup(content_text, 'html.parser')
+                    soup = _last_soup
+                    
+                    # 0. Favicon Analysis (The "Flash" Check)
+                    fav_score, fav_risk = await check_favicon(url, soup, session, domain)
+                    if fav_risk:
+                        risks.append(fav_risk)
+                        score += fav_score
+                        
+            except Exception as e:
+                # If we can't access the content, assign a moderate risk
+                risks.append(('Content Access Error', 20, f'Could not access content: {str(e)[:50]}'))
+                return 20, risks
+
         # 1. Enhanced brand impersonation detection
         title = soup.title.string if soup.title else ""
         body_text = soup.get_text().lower()
@@ -259,10 +327,6 @@ def content_risk(url):
                 risks.append(('Fake Security Claim', fake_security_score, f'Claims "{text}" but uses HTTP, not HTTPS'))
                 score += fake_security_score
     
-    except requests.exceptions.RequestException as e:
-        # If we can't access the content, assign a moderate risk
-        risks.append(('Content Access Error', 20, f'Could not access content: {str(e)[:50]}'))
-        score += 20
     except Exception as e:
         risks.append(('Content Analysis Error', 10, f'Error analyzing content: {str(e)[:50]}'))
         score += 10

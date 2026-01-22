@@ -1,91 +1,50 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const scanBtn = document.getElementById('scan-btn');
-    const statusDiv = document.getElementById('status');
-    const urlDisplay = document.getElementById('url-display');
-    const resultsDiv = document.getElementById('results');
-    const scoreVal = document.getElementById('score-val');
-    const scoreCircle = document.querySelector('.score-circle');
-    const verdictDiv = document.getElementById('verdict');
-    const monitorToggle = document.getElementById('monitor-toggle');
+document.addEventListener('DOMContentLoaded', () => {
+    // UI Elements
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.status-indicator span');
+    const scannedCount = document.getElementById('scanned-count');
+    const blockedCount = document.getElementById('blocked-count');
+    const currentDomain = document.getElementById('current-domain');
+    const btnDashboard = document.getElementById('btn-dashboard');
+    const togglePrivacy = document.getElementById('toggle-privacy-mode');
 
-    // Check monitoring status on load
-    chrome.runtime.sendMessage({ action: 'getStatus' }, (response) => {
-        if (response) {
-            monitorToggle.checked = response.isMonitoring;
-        }
-    });
-
-    // Handle toggle change
-    monitorToggle.addEventListener('change', function () {
-        if (this.checked) {
-            chrome.runtime.sendMessage({ action: 'startMonitoring' });
-            statusDiv.textContent = "Monitoring started (1hr)";
-        } else {
-            chrome.runtime.sendMessage({ action: 'stopMonitoring' });
-            statusDiv.textContent = "Monitoring stopped";
-        }
-    });
-
-    // Get current tab URL
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    // 1. Get Current Tab Domain
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0] && tabs[0].url) {
-            urlDisplay.textContent = tabs[0].url;
+            try {
+                const url = new URL(tabs[0].url);
+                currentDomain.textContent = url.hostname;
+            } catch (e) {
+                currentDomain.textContent = "System Page";
+            }
         }
     });
 
-    scanBtn.addEventListener('click', function () {
-        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-            const activeTab = tabs[0];
-            const urlToScan = activeTab.url;
+    // 2. Check Backend Status (Dev: Localhost / Prod: API)
+    chrome.runtime.sendMessage({ action: "checkStatus", backendUrl: "http://127.0.0.1:5000" }, (response) => {
+        if (response && response.status === 'online') {
+            statusDot.className = "status-dot online";
+            statusText.textContent = "ONLINE";
+        } else {
+            statusDot.className = "status-dot offline";
+            statusText.textContent = "OFFLINE";
+        }
+    });
 
-            if (!urlToScan.startsWith('http')) {
-                statusDiv.textContent = "Cannot scan this page type.";
-                return;
-            }
+    // 3. Load Stats & Settings
+    chrome.storage.local.get(['scannedCount', 'blockedCount', 'privacyMode'], (result) => {
+        scannedCount.textContent = result.scannedCount || 0;
+        blockedCount.textContent = result.blockedCount || 0;
+        togglePrivacy.checked = result.privacyMode || false;
+    });
 
-            statusDiv.textContent = "Scanning...";
-            scanBtn.disabled = true;
-            resultsDiv.classList.add('hidden');
+    // 4. Action Buttons
+    btnDashboard.addEventListener('click', () => {
+        chrome.tabs.create({ url: 'http://127.0.0.1:5000' });
+    });
 
-            fetch('http://127.0.0.1:5000/analyze', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    url: urlToScan,
-                    use_combined_analysis: true
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    statusDiv.textContent = "Scan complete";
-                    scanBtn.disabled = false;
-                    resultsDiv.classList.remove('hidden');
-
-                    // Update UI based on result
-                    scoreVal.textContent = data.score;
-                    verdictDiv.textContent = data.verdict;
-
-                    // Reset classes
-                    scoreCircle.className = 'score-circle';
-
-                    if (data.score < 50) {
-                        scoreCircle.classList.add('safe');
-                        verdictDiv.style.color = '#2ecc71';
-                    } else if (data.score < 80) {
-                        scoreCircle.classList.add('suspicious');
-                        verdictDiv.style.color = '#f39c12';
-                    } else {
-                        scoreCircle.classList.add('malicious');
-                        verdictDiv.style.color = '#e74c3c';
-                    }
-                })
-                .catch(error => {
-                    statusDiv.textContent = "Error: Could not connect to local backend.";
-                    console.error('Error:', error);
-                    scanBtn.disabled = false;
-                });
-        });
+    // 5. Toggle Listeners
+    togglePrivacy.addEventListener('change', (e) => {
+        chrome.storage.local.set({ privacyMode: e.target.checked });
     });
 });

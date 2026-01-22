@@ -1,0 +1,369 @@
+/* =========================================
+   TITAN CORE: NEON OBSIDIAN DESIGN SYSTEM
+   ========================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
+
+:root {
+    /* --- Palette: The Void & The Light --- */
+    --bg-void: #030303;
+    --bg-depth: #0a0a0a;
+    --bg-panel: rgba(20, 20, 20, 0.7);
+
+    --neon-cyan: #00f3ff;
+    --neon-magenta: #ff0055;
+    --neon-gold: #ffd700;
+    --neon-green: #00ff9d;
+
+    --text-primary: #ffffff;
+    --text-dim: #888888;
+
+    /* --- Effects --- */
+    --glass-blur: blur(10px);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+    --glow-cyan: 0 0 20px rgba(0, 243, 255, 0.3);
+    --glow-magenta: 0 0 20px rgba(255, 0, 85, 0.3);
+
+    /* --- Typography --- */
+    --font-header: 'Orbitron', sans-serif;
+    --font-ui: 'Rajdhani', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+    background-color: var(--bg-void);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    /* CRT Scanline Background Effect */
+    background-image:
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 2px, 3px 100%;
+}
+
+/* --- Layout Utilities --- */
+.titan-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.titan-grid {
+    display: grid;
+    gap: 20px;
+}
+
+/* --- Typrography Overrides --- */
+h1,
+h2,
+h3,
+h4 {
+    font-family: var(--font-header);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.text-cyan {
+    color: var(--neon-cyan);
+    text-shadow: var(--glow-cyan);
+}
+
+.text-magenta {
+    color: var(--neon-magenta);
+    text-shadow: var(--glow-magenta);
+}
+
+/* --- Components --- */
+
+/* 1. Glass Panel */
+.titan-panel {
+    background: var(--bg-panel);
+    backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
+    border-radius: 4px;
+    /* Sharp corners for cyber feel */
+    position: relative;
+    overflow: hidden;
+}
+
+/* Corner Accents */
+.titan-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    border-top: 2px solid var(--neon-cyan);
+    border-left: 2px solid var(--neon-cyan);
+}
+
+.titan-panel::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    border-bottom: 2px solid var(--neon-cyan);
+    border-right: 2px solid var(--neon-cyan);
+}
+
+/* 2. Cyber Button */
+.titan-btn-glitch {
+    background: transparent;
+    border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    padding: 15px 30px;
+    font-family: var(--font-header);
+    font-weight: 700;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.titan-btn-glitch:hover {
+    background: var(--neon-cyan);
+    color: black;
+    box-shadow: var(--glow-cyan);
+}
+
+/* 3. Terminal Input */
+.titan-terminal-input {
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-bottom: 2px solid var(--text-dim);
+    width: 100%;
+    padding: 15px;
+    font-family: var(--font-mono);
+    color: var(--neon-cyan);
+    font-size: 18px;
+    transition: border-color 0.3s;
+}
+
+.titan-terminal-input:focus {
+    outline: none;
+    border-bottom-color: var(--neon-cyan);
+}
+
+/* --- Animations --- */
+@keyframes flicker {
+    0% {
+        opacity: 0.9;
+    }
+
+    5% {
+        opacity: 0.8;
+    }
+
+    10% {
+        opacity: 0.9;
+    }
+
+    15% {
+        opacity: 0.1;
+    }
+
+    20% {
+        opacity: 0.9;
+    }
+
+    100% {
+        opacity: 0.9;
+    }
+}
+
+.crt-flicker {
+    animation: flicker 4s infinite;
+}
+
+/* --- Responsive Layout System (Phase 6.4) --- */
+.titan-dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 40px;
+}
+
+.titan-split-view {
+    display: grid;
+    grid-template-columns: 65% 35%;
+    gap: 40px;
+    margin-top: 20px;
+}
+
+.titan-input-wrapper {
+    margin: 40px 0 0 20px;
+    max-width: 600px;
+}
+
+.titan-hero-text {
+    font-size: 48px;
+    border-left: 4px solid var(--neon-cyan);
+    padding-left: 20px;
+}
+
+/* --- Media Queries for Responsiveness --- */
+@media (max-width: 1440px) {
+    .titan-main {
+        padding: 20px;
+    }
+
+    .titan-dashboard-grid {
+        gap: 15px;
+        grid-template-columns: 1.2fr 1fr;
+    }
+
+    .titan-hero-text {
+        font-size: 28px;
+        margin-bottom: 5px;
+        padding-left: 15px;
+    }
+
+    .titan-input-wrapper {
+        margin: 15px 0 0 15px;
+        max-width: 100%;
+    }
+
+    .titan-terminal-input {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+
+    #titan-globe-container {
+        height: 220px;
+    }
+
+    .hero-section {
+        padding: 5px 0 !important;
+    }
+}
+
+@media (max-width: 1024px) {
+
+    .titan-dashboard-grid,
+    .titan-split-view {
+        grid-template-columns: 1fr;
+        /* Stack columns */
+        gap: 20px;
+    }
+
+    .titan-input-wrapper {
+        margin: 20px 0;
+        max-width: 100%;
+        padding-right: 0;
+    }
+
+    .titan-hero-text {
+        font-size: 32px;
+    }
+
+    #titan-globe-container {
+        height: 250px;
+        background: radial-gradient(circle at center, rgba(0, 243, 255, 0.05) 0%, rgba(0, 0, 0, 0) 70%);
+    }
+
+    .titan-terminal-input {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .titan-container {
+        padding: 10px;
+    }
+
+    .titan-panel {
+        padding: 15px;
+    }
+
+    /* Mobile Sidebar: Convert to top header/nav */
+    .titan-sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        padding: 15px;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .titan-brand {
+        margin-bottom: 0;
+        font-size: 18px;
+    }
+
+    .titan-nav-item {
+        margin-bottom: 0;
+        margin-right: 15px;
+    }
+
+    .titan-nav-link {
+        font-size: 12px;
+    }
+
+    .titan-main {
+        margin-left: 0;
+        padding: 15px;
+    }
+}
+
+/* --- Navigation Styles (Added for proper styling) --- */
+.titan-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.titan-brand {
+    font-size: 24px;
+    font-family: var(--font-header);
+    color: var(--text-primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 50px;
+}
+
+.titan-nav-item {
+    margin-bottom: 20px;
+}
+
+.titan-nav-link {
+    font-family: var(--font-header);
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 14px;
+    letter-spacing: 1px;
+    transition: color 0.3s;
+    display: block;
+}
+
+.titan-nav-link:hover,
+.titan-nav-link.active {
+    color: var(--neon-cyan);
+    text-shadow: var(--glow-cyan);
+}
+
+.titan-main {
+    margin-left: 250px;
+    /* Offset for sidebar */
+    padding: 40px;
+}

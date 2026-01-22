@@ -1,3 +1,347 @@
-body { background-color: #f8f9fa; }
-details { border: 1px solid #dee2e6; padding: 10px; margin: 5px 0; }
-summary { cursor: pointer; font-weight: bold; }
+/* ==========================================================================
+   URL SENTINEL: TITAN EDITION DESIGN SYSTEM
+   Theme: Future/Cyberpunk/Defense
+   Colors: Obsidian, Neon Green, Signal Red, Electric Blue
+   ========================================================================== */
+
+:root {
+    /* Core Palette */
+    --bg-deep: #050505;
+    --bg-panel: #111111;
+    --bg-card: #1a1a1a;
+
+    /* Accents */
+    --neon-green: #00ff9d;
+    --neon-red: #ff2a6d;
+    --neon-blue: #05d9e8;
+    --titan-gold: #ffd700;
+
+    /* Text */
+    --text-primary: #ffffff;
+    --text-secondary: #b3b3b3;
+    --text-muted: #666666;
+
+    /* Effects */
+    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+    --glow-green: 0 0 20px rgba(0, 255, 157, 0.2);
+    --glow-red: 0 0 20px rgba(255, 42, 109, 0.2);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+    /* Prevent horizontal scroll */
+}
+
+/* --- Layout --- */
+.titan-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.titan-sidebar {
+    width: 260px;
+    background: var(--bg-panel);
+    border-right: var(--glass-border);
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+    top: 0;
+    left: 0;
+}
+
+.titan-main {
+    flex: 1;
+    margin-left: 260px;
+    padding: 40px;
+    max-width: 1600px;
+}
+
+.container {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* --- Sidebar Navigation --- */
+.titan-nav-item {
+    margin-bottom: 5px;
+}
+
+.titan-nav-link {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.titan-nav-link:hover,
+.titan-nav-link.active {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.titan-nav-link.active {
+    border-left: 3px solid var(--neon-blue);
+    background: rgba(5, 217, 232, 0.1);
+    color: var(--neon-blue);
+}
+
+.titan-logo {
+    margin-bottom: 50px;
+    padding: 0 10px;
+}
+
+/* --- Navbar (The Bridge) --- */
+.titan-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    margin-bottom: 40px;
+    border-bottom: var(--glass-border);
+}
+
+.titan-brand {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--text-primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.titan-brand span {
+    color: var(--neon-blue);
+}
+
+.nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    margin-left: 25px;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    color: var(--neon-green);
+}
+
+/* --- Hero Section --- */
+.hero-section {
+    text-align: center;
+    padding: 60px 0;
+    animation: fadeIn 1s ease-out;
+}
+
+.hero-title {
+    font-size: 64px;
+    font-weight: 900;
+    background: linear-gradient(to right, #fff, #b3b3b3);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 20px;
+}
+
+.hero-subtitle {
+    font-size: 20px;
+    color: var(--text-secondary);
+    margin-bottom: 40px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* --- The Input Engine --- */
+.titan-input-wrapper {
+    position: relative;
+    max-width: 800px;
+    margin: 0 auto;
+    background: var(--bg-panel);
+    border-radius: 12px;
+    padding: 10px;
+    border: var(--glass-border);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.titan-input-wrapper:focus-within {
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 30px rgba(5, 217, 232, 0.15);
+}
+
+.titan-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 15px 20px;
+    color: white;
+    font-size: 18px;
+    outline: none;
+}
+
+.titan-btn-scan {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    bottom: 10px;
+    background: var(--neon-blue);
+    color: black;
+    border: none;
+    padding: 0 30px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.titan-btn-scan:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 15px var(--neon-blue);
+}
+
+/* --- Results Cards --- */
+.verdict-card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 40px;
+    margin-top: 50px;
+    text-align: center;
+    border: var(--glass-border);
+}
+
+.verdict-card.safe {
+    border-top: 4px solid var(--neon-green);
+}
+
+.verdict-card.malicious {
+    border-top: 4px solid var(--neon-red);
+}
+
+.verdict-card.suspicious {
+    border-top: 4px solid var(--titan-gold);
+}
+
+.verdict-badge {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+
+.safe .verdict-badge {
+    background: rgba(0, 255, 157, 0.15);
+    color: var(--neon-green);
+}
+
+.malicious .verdict-badge {
+    background: rgba(255, 42, 109, 0.15);
+    color: var(--neon-red);
+}
+
+/* --- Stats Grid --- */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 40px;
+}
+
+.stat-card {
+    background: var(--bg-panel);
+    padding: 20px;
+    border-radius: 12px;
+    border: var(--glass-border);
+}
+
+.stat-label {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: 5px;
+}
+
+/* --- Utils --- */
+.glow-text-green {
+    color: var(--neon-green);
+    text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+}
+
+.glow-text-red {
+    color: var(--neon-red);
+    text-shadow: 0 0 10px rgba(255, 42, 109, 0.3);
+}
+
+.text-safe {
+    color: var(--neon-green) !important;
+}
+
+.text-danger {
+    color: var(--neon-red) !important;
+}
+
+.border-safe {
+    border-left: 3px solid var(--neon-green) !important;
+}
+
+.border-danger {
+    border-left: 3px solid var(--neon-red) !important;
+}
+
+.bg-safe {
+    background: var(--neon-green) !important;
+}
+
+.bg-danger {
+    background: var(--neon-red) !important;
+}
+
+/* --- Animations --- */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+footer {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 80px;
+    border-top: var(--glass-border);
+}

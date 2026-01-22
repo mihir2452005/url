@@ -17,6 +17,14 @@ from sklearn.pipeline import Pipeline
 import joblib
 from modules.ssl_checker import is_valid_hostname
 from config import Config
+import logging
+
+try:
+    import onnxruntime as ort
+    ONNX_AVAILABLE = True
+except ImportError:
+    ONNX_AVAILABLE = False
+
 
 
 class URLFeatureExtractor:
@@ -536,6 +544,68 @@ class MLUrlDetector:
             return (0, [("ML Analysis Error", 0, f"Error in ML analysis: {str(e)[:50]}")])
 
 
+class ONNXUrlDetector(MLUrlDetector):
+    """
+    High-performance ONNX-based URL detector.
+    """
+    def __init__(self, model_path=None, feature_extractor=None):
+        super().__init__(model_path, feature_extractor)
+        self.sess = None
+        self.input_name = None
+        
+        if model_path and os.path.exists(model_path):
+            try:
+                # Set graph optimization level
+                sess_options = ort.SessionOptions()
+                sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                
+                self.sess = ort.InferenceSession(model_path, sess_options)
+                self.input_name = self.sess.get_inputs()[0].name
+                self.is_trained = True
+                print(f"ONNX Model loaded from {self.model_path}")
+            except Exception as e:
+                print(f"Warning: Could not load ONNX model: {e}")
+
+    def predict_single(self, url):
+        """
+        Predict using ONNX runtime.
+        """
+        if not self.sess:
+            return 0, 0.5, [("Model not loaded", 0, "ONNX model not loaded")]
+
+        # Extract features
+        features_df = self.feature_extractor.extract_features_batch([url])
+        
+        # Convert to float32 (ONNX standard)
+        input_data = features_df.to_numpy(dtype=np.float32)
+        
+        # Run inference
+        # The output of sklearn-onnx usually has 2 outputs: label, probabilities
+        try:
+            label, probs = self.sess.run(None, {self.input_name: input_data})
+            
+            prediction = label[0]
+            # probs is often a list of dictionaries (for classifiers) or array
+            if isinstance(probs, list):
+                 # For zipmap output
+                 probabilities = probs[0]
+                 # probabilities is a dict {0: prob0, 1: prob1} usually
+                 confidence = max(probabilities.values())
+            else:
+                 # Array output
+                 confidence = max(probs[0])
+
+            # Use parent class method for risk factors logic
+            risk_factors = self.identify_risk_factors(url, features_df.iloc[0], prediction)
+            
+            return int(prediction), float(confidence), risk_factors
+
+        except Exception as e:
+            logging.error(f"ONNX inference error: {e}")
+            return 0, 0.0, []
+
+
+
 # Global instance for use in the app
 ml_detector = None
 
@@ -545,13 +615,28 @@ def initialize_ml_detector():
     Initialize the ML detector with pre-trained model if available.
     """
     global ml_detector
-    model_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'ml_url_model.pkl')
+    
+    # Try ONNX first (Phase 1: Zero Latency)
+    onnx_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'ml_url_model.onnx')
+    pickle_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'ml_url_model.pkl')
     
     # Create data directory if it doesn't exist
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
     os.makedirs(data_dir, exist_ok=True)
     
-    ml_detector = MLUrlDetector(model_path=model_path)
+    # Priority 1: ONNX
+    if ONNX_AVAILABLE and os.path.exists(onnx_path):
+        try:
+            print("Initializing ONNX Detector...")
+            ml_detector = ONNXUrlDetector(model_path=onnx_path)
+            if ml_detector.is_trained:
+                return ml_detector
+        except Exception as e:
+            print(f"Failed to initialize ONNX detector: {e}")
+
+    # Priority 2: Pickle (Fallback)
+    ml_detector = MLUrlDetector(model_path=pickle_path)
+
     
     # Try to load model, if not available, train on dataset
     if not ml_detector.is_trained:

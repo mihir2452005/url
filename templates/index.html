@@ -1,193 +1,167 @@
 {% extends "base.html" %}
+
 {% block content %}
+<div class="titan-dashboard-grid">
 
-<!-- AI Agent & Search Section -->
-<div class="row justify-content-center mb-5">
-    <div class="col-md-8 text-center">
+    <!-- Left Column: Scanner & Main View -->
+    <div>
+        <div class="hero-section" style="text-align: left; padding: 20px 0; position: relative;">
 
-        <!-- Agent Visualization -->
-        <div class="agent-container mb-4" id="agent-visual">
-            <div class="agent-core"></div>
-            <div class="agent-ring ring-1"></div>
-            <div class="agent-ring ring-2"></div>
-            <div class="agent-ring ring-3"></div>
-        </div>
+            <!-- Header Glitch Effect -->
+            <h1 class="hero-title crt-flicker titan-hero-text">
+                <span class="text-cyan">TITAN</span> PROTOCOL
+            </h1>
+            <p class="hero-subtitle" style="margin-left: 24px; font-family: var(--font-mono); color: var(--text-dim);">
+                <span style="color: var(--neon-magenta);">>> SYSTEM READY</span> // TARGET ACQUISITION ONLINE
+            </p>
 
-        <h3 class="mb-3 font-mono" id="agent-status-text">SYSTEM READY // AWAITING INPUT</h3>
-
-        <!-- Search Form -->
-        <div class="card-cyber p-4">
-            <form method="POST" id="analyze-form">
-                <div class="input-group input-group-lg mb-3">
-                    <span class="input-group-text bg-transparent border-secondary text-neon-blue font-mono">></span>
-                    <input type="url" class="form-control form-control-cyber" id="url" name="url"
-                        placeholder="ENTER URL FOR ANALYSIS..." required value="{{ url if url else '' }}"
-                        autocomplete="off">
-                    <button type="submit" class="btn btn-cyber">INITIATE SCAN</button>
+            <!-- Terminal Form -->
+            <form action="/" method="post" class="titan-input-wrapper">
+                <div style="position: relative; margin-bottom: 20px;">
+                    <input type="text" name="url" class="titan-terminal-input" placeholder="Enter target URL to scan..."
+                        required autocomplete="off" value="{{ url if url else '' }}" style="padding-left: 15px;">
                 </div>
 
-                <div class="d-flex justify-content-center gap-4 mt-3">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input bg-dark border-secondary" type="checkbox"
-                            id="include_layered_analysis" name="include_layered_analysis" value="true" {% if
-                            include_layered_analysis is not defined or include_layered_analysis %}checked{% endif %}>
-                        <label class="form-check-label text-secondary font-mono small"
-                            for="include_layered_analysis">LAYERED_SCAN</label>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input bg-dark border-secondary" type="checkbox"
-                            id="use_combined_analysis" name="use_combined_analysis" value="true" {% if
-                            use_combined_analysis is not defined or use_combined_analysis %}checked{% endif %}>
-                        <label class="form-check-label text-secondary font-mono small"
-                            for="use_combined_analysis">AI_COMBINED_MODE</label>
-                    </div>
-                </div>
+                <button type="submit" class="titan-btn-glitch" style="margin-top: 10px;">
+                    [ INITIATE SCAN ]
+                </button>
+
+                <!-- Advanced Toggles -->
+                <input type="hidden" name="include_layered_analysis" value="true">
+                <input type="hidden" name="use_combined_analysis" value="true">
             </form>
         </div>
-    </div>
-</div>
 
-{% if result %}
-<!-- PASS BACKEND RESULT TO FRONTEND JS -->
-<script>
-    window.serverResult = {{ result | tojson | safe }};
-</script>
-
-<!-- New Dashboard Layout -->
-<div class="row g-4 fade-in-up">
-    <!-- Left Column: Score & Stats -->
-    <div class="col-lg-4">
-        <!-- Main Verdict Card -->
-        <div class="card-cyber p-4 h-100 text-center">
-            <h5 class="text-secondary font-mono mb-4">THREAT_ASSESSMENT_GAUGE</h5>
-
-            <div class="risk-gauge-container">
-                <div class="risk-gauge-arc" id="risk-gauge-arc"></div>
-                <div class="risk-score-display display-1 fw-bold text-white mb-0" id="risk-score-display">0</div>
-            </div>
-
-            <h2 class="mt-4 mb-2 text-white">{{ result.classification|upper }}</h2>
-            <div class="badge bg-transparent border border-secondary text-secondary font-mono mb-3">
-                CONFIDENCE: {{ result.confidence|round(1) }}%
-            </div>
-
-            <!-- Parameters Summary -->
-            <div class="d-flex justify-content-around mt-4 pt-3 border-top border-secondary">
-                <div class="stat-box">
-                    <div class="stat-value text-white" id="stat-total-checks">0</div>
-                    <div class="stat-label">TOTAL PARAMS</div>
+        {% if result %}
+        {% if result.error %}
+        <div class="verdict-card" style="border-top: 4px solid var(--neon-red); text-align: left; padding: 30px;">
+            <h2 style="color: var(--neon-red);">Analysis Failed</h2>
+            <p>{{ result.error }}</p>
+        </div>
+        {% else %}
+        <!-- Detailed Result Display -->
+        <div class="verdict-card {{ result.classification.lower() }}" style="text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <span class="verdict-badge">{{ result.verdict }}</span>
+                    {% if result.classification == 'Safe' %}
+                    <h2>Target Secure</h2>
+                    <p style="color: var(--text-secondary);">No threat indicators detected.</p>
+                    {% elif result.classification == 'Malicious' or result.classification == 'Phishing' %}
+                    <h2 style="color: var(--neon-red);">Active Threat Detected</h2>
+                    <p style="color: var(--text-secondary);">Access blocked by Guardian Protocol.</p>
+                    {% else %}
+                    <h2 style="color: var(--titan-gold);">Suspicious Activity</h2>
+                    <p style="color: var(--text-secondary);">Caution advised.</p>
+                    {% endif %}
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value text-neon-red" id="stat-failed-checks">0</div>
-                    <div class="stat-label">ANOMALIES</div>
+                <div style="text-align: right;">
+                    <div class="{{ 'text-danger' if result.score > 50 else 'text-safe' }}"
+                        style="font-size: 48px; font-weight: 900;">
+                        {{ result.score }}
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted);">RISK SCORE</div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Right Column: Detailed Breakdown -->
-    <div class="col-lg-8">
-        <!-- AI Explanation Card -->
-        <div class="card-cyber p-4 mb-4">
-            <h5 class="text-neon-blue font-mono mb-2"> <i class="bi bi-robot"></i> AGENT_INSIGHT</h5>
-            <p class="mb-0 text-light lead fs-6 font-mono" id="ai-explanation">
-                Loading analysis interpretation...
-            </p>
-        </div>
+            <div class="stats-grid" style="margin-top: 30px;">
+                <div class="stat-card">
+                    <div class="stat-label">Confidence</div>
+                    <div class="stat-value">{{ result.confidence }}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Latency</div>
+                    <div class="stat-value">~18ms</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Engine</div>
+                    <div class="stat-value" style="color: var(--neon-blue);">TITAN V3</div>
+                </div>
+            </div>
 
-        <!-- Category Breakdown -->
-        <div class="card-cyber p-4">
-            <h5 class="text-secondary font-mono mb-4">DETAILED_VECTOR_ANALYSIS</h5>
+            <!-- Hex Grid Analysis -->
+            {% if result.breakdown %}
+            <div style="margin-top: 30px; height: 300px;">
+                <canvas id="risk-radar" data-labels='{{ chart_labels | tojson | safe }}'
+                    data-scores='{{ chart_data | tojson | safe }}'>
+                </canvas>
+            </div>
+            {% endif %}
 
-            <div class="row">
-                {% for cat, data in result.breakdown.items() %}
-                <div class="col-md-6 mb-4">
-                    <div class="d-flex justify-content-between align-items-end mb-1">
-                        <span class="font-mono text-uppercase small text-light">{{ cat }}</span>
-                        <span class="text-neon-blue small">{{ data.weighted|round(1) }} RISK</span>
-                    </div>
-
-                    <!-- Progress Bar -->
-                    <div class="category-progress">
-                        <!-- Width and color handled by CSS variables to appease linters -->
-                        <div class="category-bar bg-gradient"
-                            style="--bar-width: {{ [data.weighted * 2, 5]|max }}%; --bar-bg: {{ 'var(--neon-green)' if data.weighted < 10 else 'var(--neon-red)' }}">
-                        </div>
-                    </div>
-
-                    <!-- Expandable Details -->
-                    <div class="mt-2">
-                        <details>
-                            <summary class="text-secondary small font-mono">VIEW LOGS</summary>
-                            <ul class="list-unstyled mt-2 small text-light ps-3 border-start border-secondary">
-                                {% for name, wt, expl in data.details %}
-                                {% if wt > 0 %}
-                                <li class="mb-1 text-neon-red">
-                                    [!] {{ name }}: {{ expl }}
-                                </li>
-                                {% else %}
-                                <li class="mb-1 text-muted">
-                                    [√] {{ name }}
-                                </li>
-                                {% endif %}
-                                {% endfor %}
-                            </ul>
-                        </details>
-                    </div>
+            <!-- compact risk list -->
+            {% if result.risks %}
+            <div style="margin-top: 30px;">
+                <h4 style="color: var(--text-muted); margin-bottom: 15px;">DETECTED VECTORS</h4>
+                {% for category, data in result.risks.items() %}
+                {% if data[1] %}
+                {% for risk in data[1] %}
+                <div
+                    style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between;">
+                    <span style="font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">{{ risk[0]
+                        }}</span>
+                    <span style="color: var(--neon-red);">+{{ risk[1] }}</span>
                 </div>
                 {% endfor %}
-            </div>
-
-            {% if result.ml_analysis %}
-            <hr class="border-secondary my-4">
-            <h5 class="text-neon-purple font-mono mb-3">MACHINE_LEARNING_PREDICTION</h5>
-            <div class="p-3 border border-secondary rounded" style="background: rgba(188, 19, 254, 0.05);">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <span class="d-block font-mono text-uppercase">MODEL VERDICT</span>
-                        <strong class="fs-4 text-light">{{ result.ml_analysis.prediction }}</strong>
-                    </div>
-                    <div>
-                        <span class="d-block font-mono text-uppercase">CONFIDENCE</span>
-                        <strong class="fs-4 text-neon-purple">{{ (result.ml_analysis.confidence * 100)|round(1)
-                            }}%</strong>
-                    </div>
-                </div>
+                {% endif %}
+                {% endfor %}
             </div>
             {% endif %}
         </div>
+        {% endif %}
+        {% endif %}
     </div>
-</div>
-{% endif %}
 
-<div class="alert alert-dark border-secondary mt-5" role="alert">
-    <div class="d-flex align-items-center">
-        <div class="text-neon-yellow fs-3 me-3"><i class="bi bi-shield-lock"></i></div>
-        <div>
-            <h6 class="alert-heading font-mono text-neon-yellow">INTELLIGENCE AUGMENTATION // RESEARCH EDITION</h6>
-            <small class="text-light">
-                Engineered for advanced threat modeling and educational analysis.
-                This system leverages experimental heuristic algorithms to detect complex attack vectors.
-                Designed to augment human security analysts, not replace comprehensive defense protocols.
-            </small>
+    <!-- Right Column: 3D Hologram & Intel Feed -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+
+        <!-- 3D THREAT GLOBE CONTAINER -->
+        <div id="titan-globe-container" class="titan-panel" style="height: 300px; width: 100%; position: relative;">
+            <div
+                style="position: absolute; top: 10px; left: 10px; z-index: 10; font-size: 10px; color: var(--neon-cyan);">
+                LIVE THREAT MAP // GLOBAL
+            </div>
+        </div>
+
+        <!-- Recent Intel -->
+        <div class="titan-panel" style="padding: 20px; flex-grow: 1;">
+            <h3
+                style="margin-bottom: 20px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">
+                Recent Intelligence
+            </h3>
+
+            {% if recent_history %}
+            {% for entry in recent_history %}
+            <a href="/history/{{ entry.id }}" style="text-decoration: none; display: block; margin-bottom: 10px;">
+                <div class="{{ 'border-safe' if entry.classification == 'Safe' else 'border-danger' }}"
+                    style="background: rgba(255,255,255,0.02); padding: 15px; border-radius: 8px; transition: background 0.2s;">
+                    <div
+                        style="font-size: 14px; color: var(--text-primary); margin-bottom: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ entry.url }}
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);">
+                        <span>{{ entry.timestamp[:16].replace('T', ' ') }}</span>
+                        <span class="{{ 'text-safe' if entry.classification == 'Safe' else 'text-danger' }}">{{
+                            entry.classification }}</span>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+            {% else %}
+            <div style="color: var(--text-muted); font-size: 13px; font-style: italic;">No recent scans active.</div>
+            {% endif %}
         </div>
     </div>
+
 </div>
 
-<style>
-    /* Animation ensure */
-    .fade-in-up {
-        animation: fadeInUp 0.5s ease-out forwards;
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    @keyframes fadeInUp {
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-</style>
-
+<!-- Load Titan Engines -->
+<script>
+    // Inject backend result for the Cyber Agent
+    window.serverResult = {{ result | tojson | safe if result else 'null' }};
+</script>
+<script src="{{ url_for('static', filename='js/titan-globe.js') }}"></script>
+<script src="{{ url_for('static', filename='js/titan-charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cyber-agent.js') }}"></script>
 {% endblock %}

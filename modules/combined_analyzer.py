@@ -13,6 +13,7 @@ from modules.advanced_features import perform_advanced_analysis
 from modules.layered_analysis import LayeredUrlAnalyzer
 from urllib.parse import urlparse
 from config import Config
+import asyncio
 
 
 class CombinedUrlAnalyzer:
@@ -23,7 +24,7 @@ class CombinedUrlAnalyzer:
     def __init__(self):
         self.layered_analyzer = LayeredUrlAnalyzer()
     
-    def analyze_url_combined(self, url):
+    async def analyze_url_combined(self, url):
         """
         Perform combined analysis using both rule-based and ML approaches.
         """
@@ -60,17 +61,17 @@ class CombinedUrlAnalyzer:
             return result
         
         # Perform rule-based analysis
-        rule_based_result = self._perform_rule_based_analysis(url)
+        rule_based_result = await self._perform_rule_based_analysis(url)
         
         # Perform ML-based analysis
-        ml_result = self._perform_ml_analysis(url)
+        ml_result = await self._perform_ml_analysis(url)
         
         # Combine results
         combined_result = self._combine_results(rule_based_result, ml_result)
         
         return combined_result
     
-    def _perform_rule_based_analysis(self, url):
+    async def _perform_rule_based_analysis(self, url):
         """
         Perform traditional rule-based analysis.
         """
@@ -85,12 +86,12 @@ class CombinedUrlAnalyzer:
         risks['ssl'] = ssl_risk(url)
         
         # Content analysis
-        content_result = content_risk(url)
+        content_result = await content_risk(url)
         risks['content'] = content_result
         
         # Advanced analysis
         try:
-            advanced_results = perform_advanced_analysis(url, None, risks)
+            advanced_results = await asyncio.to_thread(perform_advanced_analysis, url, None, risks)
             risks.update(advanced_results)
         except Exception as e:
             risks['advanced_error'] = (0, [('Advanced Analysis Skipped', 0, str(e)[:50])])
@@ -111,7 +112,7 @@ class CombinedUrlAnalyzer:
             'risks': risks
         }
     
-    def _perform_ml_analysis(self, url):
+    async def _perform_ml_analysis(self, url):
         """
         Perform ML-based analysis.
         """
@@ -299,8 +300,8 @@ class CombinedUrlAnalyzer:
 combined_analyzer = CombinedUrlAnalyzer()
 
 
-def analyze_url_combined(url):
+async def analyze_url_combined(url):
     """
     Wrapper function for combined analysis.
     """
-    return combined_analyzer.analyze_url_combined(url)
+    return await combined_analyzer.analyze_url_combined(url)

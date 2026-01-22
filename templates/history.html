@@ -1,279 +1,131 @@
 {% extends "base.html" %}
+
 {% block content %}
+<div class="container" style="max-width: 1400px;">
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 50px;">
+        <h1 class="hero-title" style="font-size: 42px;">Intelligence Archive</h1>
+        <p class="hero-subtitle">Comprehensive logs of all intercepted vectors.</p>
+    </div>
 
-<!-- Page Header -->
-<div class="row mb-5">
-    <div class="col-md-12 text-center">
-        <h2 class="text-neon-blue font-mono glitch-text">OPERATION LOGS // HISTORY</h2>
-        <p class="text-secondary font-mono small">ARCHIVED THREAT INTELLIGENCE DATA</p>
+    <!-- Stats HUD -->
+    <div class="stats-grid" style="margin-bottom: 50px;">
+        <div class="stat-card">
+            <div class="stat-label">Total Scans</div>
+            <div class="stat-value">{{ stats.total_analyses }}</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--neon-green);">
+            <div class="stat-label" style="color: var(--neon-green);">Secure</div>
+            <div class="stat-value glow-text-green">{{ stats.safe_count }}</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--titan-gold);">
+            <div class="stat-label" style="color: var(--titan-gold);">Suspicious</div>
+            <div class="stat-value">{{ stats.suspicious_count }}</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--neon-red);">
+            <div class="stat-label" style="color: var(--neon-red);">Threats</div>
+            <div class="stat-value glow-text-red">{{ stats.malicious_count + stats.phishing_count }}</div>
+        </div>
     </div>
-</div>
 
-<!-- Statistics HUD -->
-<div class="row mb-5 g-4">
-    <div class="col-md-3">
-        <div class="card-cyber p-3 text-center h-100">
-            <small class="text-secondary font-mono d-block mb-2">TOTAL SCANS</small>
-            <h2 class="text-white font-mono display-5">{{ stats.total_analyses }}</h2>
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="card-cyber p-3 text-center h-100" style="border-color: rgba(0, 255, 157, 0.3) !important;">
-            <small class="text-neon-green font-mono d-block mb-2">SECURE</small>
-            <h3 class="text-neon-green font-mono">{{ stats.safe_count }}</h3>
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="card-cyber p-3 text-center h-100" style="border-color: rgba(243, 235, 13, 0.3) !important;">
-            <small class="text-neon-yellow font-mono d-block mb-2">SUSPICIOUS</small>
-            <h3 class="text-neon-yellow font-mono">{{ stats.suspicious_count }}</h3>
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="card-cyber p-3 text-center h-100" style="border-color: rgba(255, 42, 109, 0.3) !important;">
-            <small class="text-neon-red font-mono d-block mb-2">PHISHING</small>
-            <h3 class="text-neon-red font-mono">{{ stats.phishing_count }}</h3>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card-cyber p-3 text-center h-100" style="border-color: rgba(188, 19, 254, 0.3) !important;">
-            <small class="text-neon-purple font-mono d-block mb-2">MALICIOUS</small>
-            <h3 class="text-neon-purple font-mono">{{ stats.malicious_count }}</h3>
-        </div>
-    </div>
-</div>
-
-<!-- Command Bar -->
-<div class="card-cyber p-4 mb-5">
-    <form method="GET" action="{{ url_for('history_search') }}" class="row g-3 align-items-center">
-        <div class="col-md-4">
-            <div class="input-group">
-                <span class="input-group-text bg-transparent border-secondary text-neon-blue font-mono">></span>
-                <input type="text" class="form-control form-control-cyber text-light" name="q"
-                    placeholder="QUERY PROTOCOL..." value="{{ search_query or '' }}">
-            </div>
-        </div>
-        <div class="col-md-3">
-            <select class="form-select bg-dark text-light border-secondary font-mono" name="verdict">
-                <option value="">ALL CLASSIFICATIONS</option>
-                <option value="Safe" {% if search_verdict=='Safe' %}selected{% endif %}>SAFE</option>
-                <option value="Suspicious" {% if search_verdict=='Suspicious' %}selected{% endif %}>SUSPICIOUS</option>
-                <option value="Phishing" {% if search_verdict=='Phishing' %}selected{% endif %}>PHISHING</option>
-                <option value="Malicious" {% if search_verdict=='Malicious' %}selected{% endif %}>MALICIOUS</option>
+    <!-- Controls -->
+    <div class="verdict-card"
+        style="padding: 20px; text-align: left; margin-bottom: 30px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+        <form method="GET" action="{{ url_for('history_search') }}" style="display: flex; gap: 10px; flex: 1;">
+            <input type="text" name="q" class="titan-input" placeholder="Search archive..."
+                value="{{ search_query or '' }}"
+                style="background: var(--bg-deep); border: var(--glass-border); padding: 10px; font-size: 14px;">
+            <select name="verdict" class="titan-input"
+                style="background: var(--bg-deep); border: var(--glass-border); padding: 10px; font-size: 14px; width: auto;">
+                <option value="">All Verdicts</option>
+                <option value="Safe" {% if search_verdict=='Safe' %}selected{% endif %}>Safe</option>
+                <option value="Suspicious" {% if search_verdict=='Suspicious' %}selected{% endif %}>Suspicious</option>
+                <option value="Malicious" {% if search_verdict=='Malicious' %}selected{% endif %}>Malicious</option>
             </select>
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-cyber w-100">EXECUTE SEARCH</button>
-        </div>
-        <div class="col-md-3 text-end">
-            <form method="POST" action="{{ url_for('clear_history') }}" style="display:inline;"
-                onsubmit="return confirm('DANGER: This will permanently purge all intelligence logs. Proceed?');">
-                <button type="submit" class="btn btn-outline-danger w-100 font-mono">
-                    <i class="bi bi-trash3-fill"></i> PURGE LOGS
-                </button>
-            </form>
-        </div>
-    </form>
-</div>
+            <button type="submit" class="titan-btn-scan" style="position: static; padding: 10px 20px;">FILTER</button>
+        </form>
 
-<!-- Intelligence Data Grid -->
-<div class="row">
-    <div class="col-md-12">
-        {% if history %}
-        <div class="card-cyber p-0 overflow-hidden">
-            <div class="table-responsive">
-                <table class="table table-dark table-hover mb-0" style="background: transparent;">
-                    <thead>
-                        <tr class="border-secondary text-secondary font-mono small">
-                            <th class="p-3">TIMESTAMP</th>
-                            <th class="p-3">TARGET URL</th>
-                            <th class="p-3">VERDICT</th>
-                            <th class="p-3">RISK Lvl</th>
-                            <th class="p-3">CONFIDENCE</th>
-                            <th class="p-3 text-end">OPERATIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody class="border-top border-secondary">
-                        {% for entry in history %}
-                        <tr class="align-middle border-secondary"
-                            style="border-bottom-width: 1px; --bs-table-bg: transparent;">
-                            <td class="p-3 font-mono small text-secondary">{{ entry.timestamp[:19].replace('T', ' ') }}
-                            </td>
-
-                            <!-- URL with Professional Copy Input Group -->
-                            <td class="p-3">
-                                <div class="input-group input-group-sm">
-                                    <input type="text"
-                                        class="form-control form-control-cyber text-light font-mono bg-transparent border-secondary"
-                                        value="{{ entry.url }}" readonly title="{{ entry.url }}"
-                                        style="border-right: none; min-width: 300px;">
-                                    <button
-                                        class="btn btn-outline-secondary border-secondary text-neon-blue js-copy-btn"
-                                        type="button" data-clipboard-text="{{ entry.url }}" title="COPY TO CLIPBOARD">
-                                        <i class="bi bi-clipboard"></i>
-                                    </button>
-                                </div>
-                            </td>
-
-                            <td class="p-3">
-                                {% if entry.verdict == 'Safe' %}
-                                <span
-                                    class="badge bg-transparent border border-success text-success font-mono">SAFE</span>
-                                {% elif entry.verdict == 'Suspicious' %}
-                                <span
-                                    class="badge bg-transparent border border-warning text-warning font-mono">SUSPICIOUS</span>
-                                {% else %}
-                                <span
-                                    class="badge bg-transparent border border-danger text-danger font-mono">THREAT</span>
-                                {% endif %}
-                            </td>
-                            <td class="p-3">
-                                <span
-                                    class="font-mono {{ 'text-neon-green' if entry.score < 35 else 'text-neon-yellow' if entry.score < 75 else 'text-neon-red' }}">
-                                    {{ entry.score|round(1) }}
-                                </span>
-                            </td>
-                            <td class="p-3 font-mono text-secondary">{{ entry.confidence|round(1) }}%</td>
-                            <td class="p-3 text-end">
-                                <a href="{{ url_for('history_detail', entry_id=entry.id) }}"
-                                    class="btn btn-sm btn-outline-light me-1" title="VIEW DETAILS"><i
-                                        class="bi bi-eye"></i></a>
-                                <form method="POST" action="{{ url_for('delete_history_entry', entry_id=entry.id) }}"
-                                    style="display:inline;" onsubmit="return confirm('Delete this entry?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="DELETE RECORD"><i
-                                            class="bi bi-trash"></i></button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Pagination (Cyber Style) -->
-        {% if total_pages > 1 %}
-        <nav aria-label="Page navigation" class="mt-4">
-            <ul class="pagination justify-content-center">
-                {% if page > 1 %}
-                <li class="page-item">
-                    <a class="page-link bg-transparent border-secondary text-neon-blue font-mono"
-                        href="{{ url_for('history', page=page-1) }}">
-                        < PREV</a>
-                </li>
-                {% endif %}
-
-                {% for p in range(1, total_pages + 1) %}
-                {% if p == page %}
-                <li class="page-item active"><span class="page-link bg-dark border-secondary text-neon-blue font-mono"
-                        style="border-color: var(--neon-blue) !important;">{{ p }}</span></li>
-                {% elif p <= 3 or p> total_pages - 3 or (p >= page - 1 and p <= page + 1) %} <li class="page-item"><a
-                            class="page-link bg-transparent border-secondary text-secondary font-mono"
-                            href="{{ url_for('history', page=p) }}">{{ p }}</a></li>
-                        {% endif %}
-                        {% endfor %}
-
-                        {% if page < total_pages %} <li class="page-item">
-                            <a class="page-link bg-transparent border-secondary text-neon-blue font-mono"
-                                href="{{ url_for('history', page=page+1) }}">NEXT ></a>
-                            </li>
-                            {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
-
-        {% else %}
-        <div class="alert alert-dark border-secondary text-center mt-4">
-            <p class="mb-0 text-secondary font-mono">NO INTELLIGENCE LOGS FOUND. <a href="{{ url_for('index') }}"
-                    class="text-neon-blue">INITIATE NEW SCAN</a></p>
-        </div>
-        {% endif %}
+        <form method="POST" action="{{ url_for('clear_history') }}"
+            onsubmit="return confirm('Purge entire database?');">
+            <button type="submit"
+                style="background: transparent; border: 1px solid var(--neon-red); color: var(--neon-red); padding: 10px 20px; border-radius: 8px; cursor: pointer;">PURGE
+                ARCHIVE</button>
+        </form>
     </div>
+
+    <!-- Data Grid -->
+    {% if history %}
+    <div style="background: var(--bg-panel); border-radius: 12px; border: var(--glass-border); overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02);">
+                    <th style="padding: 15px; color: var(--text-muted); font-size: 12px; letter-spacing: 1px;">TIMESTAMP
+                    </th>
+                    <th style="padding: 15px; color: var(--text-muted); font-size: 12px; letter-spacing: 1px;">TARGET
+                    </th>
+                    <th style="padding: 15px; color: var(--text-muted); font-size: 12px; letter-spacing: 1px;">VERDICT
+                    </th>
+                    <th style="padding: 15px; color: var(--text-muted); font-size: 12px; letter-spacing: 1px;">RISK</th>
+                    <th style="padding: 15px; color: var(--text-muted); font-size: 12px; letter-spacing: 1px;">ACTION
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in history %}
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;">
+                    <td
+                        style="padding: 15px; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); font-size: 13px;">
+                        {{ entry.timestamp[:16].replace('T', ' ') }}</td>
+                    <td style="padding: 15px; font-family: 'JetBrains Mono', monospace;">
+                        <span
+                            style="color: var(--text-primary); display: block; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{
+                            entry.url }}</span>
+                    </td>
+                    <td style="padding: 15px;">
+                        {% if entry.verdict == 'Safe' %}
+                        <span
+                            style="color: var(--neon-green); background: rgba(0,255,157,0.1); padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;">SAFE</span>
+                        {% elif entry.verdict == 'Suspicious' %}
+                        <span
+                            style="color: var(--titan-gold); background: rgba(255,215,0,0.1); padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;">SUSP</span>
+                        {% else %}
+                        <span
+                            style="color: var(--neon-red); background: rgba(255,42,109,0.1); padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;">THREAT</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 15px;">
+                        <div
+                            style="font-weight: 700; color: {{ 'var(--neon-red)' if entry.score > 70 else 'var(--text-primary)' }};">
+                            {{ entry.score }}</div>
+                    </td>
+                    <td style="padding: 15px;">
+                        <a href="{{ url_for('history_detail', entry_id=entry.id) }}"
+                            style="color: var(--neon-blue); text-decoration: none; font-size: 13px; font-weight: 500; margin-right: 15px;">DETAILS</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div style="text-align: center; margin-top: 30px;">
+        {% if page > 1 %}
+        <a href="{{ url_for('history', page=page-1) }}"
+            style="color: var(--text-secondary); text-decoration: none; margin: 0 10px;">&laquo; Prev</a>
+        {% endif %}
+        <span style="color: var(--neon-blue);">PAGE {{ page }} OF {{ total_pages }}</span>
+        {% if page < total_pages %} <a href="{{ url_for('history', page=page+1) }}"
+            style="color: var(--text-secondary); text-decoration: none; margin: 0 10px;">Next &raquo;</a>
+            {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="text-align: center; padding: 50px; color: var(--text-muted);">
+        <p>No intelligence records found.</p>
+    </div>
+    {% endif %}
 </div>
-
-<script>
-    console.log('History page scripts loaded via Event Delegation');
-
-    document.addEventListener('DOMContentLoaded', function () {
-        // Event delegation for copy buttons
-        document.body.addEventListener('click', function (e) {
-            // Find closest button with js-copy-btn class
-            const btn = e.target.closest('.js-copy-btn');
-            if (!btn) return;
-
-            const text = btn.getAttribute('data-clipboard-text');
-            if (text) {
-                copyToClipboard(text, btn);
-            }
-        });
-    });
-
-    function copyToClipboard(text, btnElement) {
-        console.log('Copy requested for:', text);
-        // Fallback for non-secure contexts (HTTP)
-        if (!navigator.clipboard) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            textArea.style.top = "0";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-
-            try {
-                const successful = document.execCommand('copy');
-                const msg = successful ? 'successful' : 'unsuccessful';
-                console.log('Fallback copy result:', msg);
-                showFeedback(btnElement, true);
-            } catch (err) {
-                console.error('Fallback: Oops, unable to copy', err);
-                alert('Failed to copy URL. Please copy manually.');
-            }
-
-            document.body.removeChild(textArea);
-            return;
-        }
-
-        // Modern API
-        navigator.clipboard.writeText(text).then(() => {
-            console.log('Clipboard API success');
-            showFeedback(btnElement, true);
-        }).catch(err => {
-            console.error('Failed to copy: ', err);
-            // Try fallback if modern API fails (e.g. permission denied)
-            try {
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-9999px";
-                textArea.style.top = "0";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                showFeedback(btnElement, true);
-            } catch (fallbackErr) {
-                alert('Failed to copy URL to clipboard');
-            }
-        });
-    }
-
-    function showFeedback(btnElement, success) {
-        const originalHtml = btnElement.innerHTML;
-        const originalClass = btnElement.className;
-
-        btnElement.innerHTML = '<i class="bi bi-check-lg"></i>';
-        // Preserve original classes but add success state
-        btnElement.classList.remove('btn-outline-secondary', 'text-neon-blue');
-        btnElement.classList.add('btn-success', 'border-success', 'text-white');
-
-        setTimeout(() => {
-            btnElement.innerHTML = originalHtml;
-            // Restore original classes
-            btnElement.className = originalClass;
-        }, 2000);
-    }
-</script>
 {% endblock %}

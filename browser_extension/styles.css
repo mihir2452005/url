@@ -1,0 +1,51 @@
+/* styles.css: The Guardian UI */
+
+#url-sentinel-tooltip {
+    position: fixed;
+    z-index: 2147483647;
+    /* Maximum Z-Index */
+    padding: 10px;
+    border-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    /* Don't block clicking underneath */
+    transition: opacity 0.2s;
+    max-width: 250px;
+}
+
+.uls-loading {
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+}
+
+.uls-safe {
+    background-color: #f6ffed;
+    color: #000;
+    border: 2px solid #52c41a;
+}
+
+.uls-danger {
+    background-color: #fff1f0;
+    color: #cf1322;
+    border: 2px solid #f5222d;
+    font-weight: bold;
+}
+
+.uls-error {
+    background-color: #fffbe6;
+    color: #faad14;
+    border: 1px solid #faad14;
+}
+
+.uls-header {
+    margin-bottom: 5px;
+}
+
+/* Link highlighting */
+a[data-risk="high"] {
+    border-bottom: 3px solid red !important;
+    cursor: not-allowed !important;
+}

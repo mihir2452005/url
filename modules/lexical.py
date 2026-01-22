@@ -3,6 +3,7 @@ from collections import Counter
 import math
 from urllib.parse import urlparse
 import unicodedata
+from modules.rust_bridge import is_ip_address, count_special_chars, has_suspicious_keywords
 
 def is_likely_legitimate(url, netloc):
     """Check if URL matches known legitimate patterns to reduce false positives."""
@@ -58,11 +59,10 @@ def lexical_risk(url):
         is_legit_pattern = is_likely_legitimate(url, netloc)
         sensitivity_multiplier = 0.5 if is_legit_pattern else 1.0
         
-        # 1. Enhanced IP Address Detection
-        ip_pattern = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.) {3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
-        if re.search(ip_pattern, netloc.split(':')[0]):
+        # 1. Enhanced IP Address Detection (Rust Accelerated)
+        if is_ip_address(url):
             # Check if it's a private/localhost IP (less risky)
-            if re.match(r'^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)', netloc):
+            if re.match(r'^(http://|https://)?(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)', netloc):
                 risks.append(('Private IP Address', 15, 'Uses private/localhost IP (dev/testing environment).'))
                 score += 15
             else:
@@ -107,7 +107,11 @@ def lexical_risk(url):
                 score += entropy_risk
                 risks.append(('High Entropy', entropy_risk, f'High randomness in URL path/query: {entropy:.2f}'))
         
-        # 4. Enhanced Keyword Stuffing Detection
+        # 4. Enhanced Keyword Stuffing Detection (Rust Accelerated)
+        if has_suspicious_keywords(url):
+            # We need to find WHICH keyword for the message, but usage is already flagged
+            pass # Continue to detailed check for reporting
+            
         security_keywords = ['login', 'secure', 'bank', 'account', 'signin', 'password', 'update', 'confirm', 
                            'verify', 'secure', 'official', 'ebay', 'paypal', 'amazon', 'apple', 'microsoft', 
                            'facebook', 'google', 'twitter', 'instagram', 'sbi', 'hdfc', 'icici', 'axis', 

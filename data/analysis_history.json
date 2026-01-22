@@ -1,0 +1,152 @@
+[
+  {
+    "id": "analysis_20260122205626863339",
+    "timestamp": "2026-01-22T20:56:26.863444",
+    "url": "https://chatgpt.com/",
+    "score": 44.7,
+    "classification": "Suspicious",
+    "verdict": "Suspicious",
+    "confidence": 82.9,
+    "risk_summary": {
+      "lexical": {
+        "score": 0,
+        "details": []
+      },
+      "domain": {
+        "score": 0,
+        "details": []
+      },
+      "ssl": {
+        "score": 0,
+        "details": []
+      },
+      "content": {
+        "score": 0,
+        "details": []
+      },
+      "advanced_lexical": {
+        "score": 0,
+        "details": []
+      },
+      "advanced_structural": {
+        "score": 0,
+        "details": []
+      },
+      "advanced_domain": {
+        "score": 0,
+        "details": []
+      },
+      "advanced_certificate": {
+        "score": 25,
+        "details": [
+          {
+            "name": "New Certificate",
+            "weight": 25,
+            "explanation": "Certificate issued 17 days ago"
+          }
+        ]
+      },
+      "advanced_error": {
+        "score": 5,
+        "details": [
+          {
+            "name": "Advanced Analysis Error",
+            "weight": 5,
+            "explanation": "Error: cannot use 'tuple' as a set element (unhashable ty"
+          }
+        ]
+      },
+      "malicious_file": {
+        "score": 0,
+        "details": []
+      }
+    },
+    "breakdown": {
+      "lexical": {
+        "score": 0,
+        "details": [],
+        "weighted": 0.0
+      },
+      "domain": {
+        "score": 0,
+        "details": [],
+        "weighted": 0.0
+      },
+      "ssl": {
+        "score": 0,
+        "details": [],
+        "weighted": 0.0
+      },
+      "content": {
+        "score": 0,
+        "details": [],
+        "weighted": 0.0
+      },
+      "advanced_lexical": {
+        "score": 0,
+        "details": [],
+        "weighted": 0.0
+      },
+      "advanced_structural": {
+        "score": 0,
+        "details": [],
+        "weighted": 0.0
+      },
+      "advanced_domain": {
+        "score": 0,
+        "details": [],
+        "weighted": 0.0
+      },
+      "advanced_certificate": {
+        "score": 25,
+        "details": [
+          [
+            "New Certificate",
+            25,
+            "Certificate issued 17 days ago"
+          ]
+        ],
+        "weighted": 2.25
+      },
+      "malicious_file": {
+        "score": 0,
+        "details": [],
+        "weighted": 0.0
+      }
+    }
+  },
+  {
+    "id": "analysis_20260122205509298916",
+    "timestamp": "2026-01-22T20:55:09.298957",
+    "url": "https://google.com",
+    "score": 0,
+    "classification": "Safe",
+    "verdict": "Safe",
+    "confidence": 100.0,
+    "risk_summary": {
+      "trusted_domain": {
+        "score": 0,
+        "details": [
+          {
+            "name": "Trusted Domain",
+            "weight": 0,
+            "explanation": "Domain is in verified whitelist of legitimate sites"
+          }
+        ]
+      }
+    },
+    "breakdown": {
+      "trusted_domain": {
+        "score": 0,
+        "details": [
+          [
+            "Trusted Domain",
+            0,
+            "Domain is in verified whitelist of legitimate sites"
+          ]
+        ],
+        "weighted": 0
+      }
+    }
+  }
+]

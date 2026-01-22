@@ -989,6 +989,25 @@ def perform_advanced_analysis(url, soup=None, existing_risks=None):
             behavioral_score, behavioral_risks = AdvancedBehavioralAnalyzer.analyze(url, all_risks)
             results['advanced_behavioral'] = (behavioral_score, behavioral_risks)
         
+        # Phase 2++: OCR Analysis integration
+        # Note: In production, we'd pass the screenshot path, but for now we look for it in the static folder
+        # based on the URL hash as defined in snapshot.py
+        import os
+        url_hash = abs(hash(url))
+        screenshot_path = os.path.join(os.path.dirname(__file__), '..', 'static', 'screenshots', f'{url_hash}.png')
+        
+        if os.path.exists(screenshot_path):
+            try:
+                from modules.ocr_analyzer import ocr_engine
+                if ocr_engine.enabled:
+                    text = ocr_engine.extract_text(screenshot_path)
+                    ocr_score, ocr_risks = ocr_engine.analyze_text(text)
+                    if ocr_risks:
+                         results['ocr_analysis'] = (ocr_score, ocr_risks)
+            except Exception:
+                pass
+
+        
     except Exception as e:
         results['advanced_error'] = (5, [('Advanced Analysis Error', 5, f'Error: {str(e)[:50]}')])
     

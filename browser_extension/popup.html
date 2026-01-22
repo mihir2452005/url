@@ -2,33 +2,80 @@
 <html>
 
 <head>
-  <title>URL Sentinel</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="popup.css">
+  <!-- Google Fonts for Extension -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@700&display=swap');
+  </style>
 </head>
 
 <body>
   <div class="container">
-    <h2>URL Sentinel</h2>
-    <div id="status">Ready to scan</div>
-    <div id="url-display" class="url-text"></div>
-    <button id="scan-btn">Scan Current Page</button>
-
-    <div class="monitor-controls"
-      style="margin-top: 15px; width: 100%; display: flex; align-items: center; justify-content: space-between; background: #eee; padding: 10px; border-radius: 5px;">
-      <span style="font-size: 13px; font-weight: bold;">Monitor Mode (1hr)</span>
-      <label class="switch">
-        <input type="checkbox" id="monitor-toggle">
-        <span class="slider round"></span>
-      </label>
-    </div>
-
-    <div id="results" class="hidden">
-      <div class="score-circle">
-        <span id="score-val">--</span>
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--neon-blue)" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+        SENTINEL <span>TITAN</span>
       </div>
-      <div id="verdict" class="verdict"></div>
-      <div id="details" class="details"></div>
+      <div class="status-indicator" id="connection-status">
+        <div class="status-dot online"></div>
+        <span>ONLINE</span>
+      </div>
+    </header>
+
+    <!-- Neural Core -->
+    <div class="neural-core">
+      <div class="shield-icon">
+        <div class="pulse"></div>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--neon-blue)" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      </div>
+      <div class="current-site" id="current-domain">Monitoring Active Tab...</div>
+      <div class="protection-status" id="protection-status">System Secure</div>
     </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value text-green" id="scanned-count">0</div>
+        <div class="stat-label">Links Scanned</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value text-red" id="blocked-count">0</div>
+        <div class="stat-label">Threats Neutralized</div>
+      </div>
+    </div>
+
+    <!-- Command Deck -->
+    <div class="command-deck">
+      <div class="command-row">
+        <div class="command-label">ACTIVE DEFENSE</div>
+        <label class="toggle">
+          <input type="checkbox" checked id="toggle-active-defense">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="command-row">
+        <div class="command-label">AUTO-SCANNER</div>
+        <label class="toggle">
+          <input type="checkbox" checked id="toggle-auto-scan">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="command-row">
+        <div class="command-label">PRIVACY MODE (SILENT)</div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-privacy-mode">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <button class="action-btn" id="btn-dashboard">Open Titan Dashboard</button>
   </div>
   <script src="popup.js"></script>
 </body>

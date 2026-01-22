@@ -1,6 +1,6 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from quart import Quart, render_template, request, jsonify, redirect, url_for
 from urllib.parse import urlparse
-import threading
+import asyncio
 import time
 import os
 from modules.lexical import lexical_risk
@@ -17,21 +17,33 @@ from modules.ml_model import initialize_ml_detector
 from modules.malicious_file_detector import malicious_file_risk
 from config import Config
 
-app = Flask(__name__)
+app = Quart(__name__)
 app.config.from_object(Config)
 
 # Enable CORS for browser extension
-from flask_cors import CORS
-CORS(app, resources={r"/analyze": {"origins": "*"}})
+from quart_cors import cors
+app = cors(app, allow_origin="*")
 
-# Initialize Local AI Detector (loads models once)
-ai_detector = LocalUrlDetector()
+# Global instances (Lazy Loaded)
+ai_detector = None
+layered_analyzer = None
 
-# Initialize Layered URL Analyzer
-layered_analyzer = LayeredUrlAnalyzer()
+def get_ai_detector():
+    global ai_detector
+    if ai_detector is None:
+        ai_detector = LocalUrlDetector()
+    return ai_detector
+
+def get_layered_analyzer():
+    global layered_analyzer
+    if layered_analyzer is None:
+        layered_analyzer = LayeredUrlAnalyzer()
+    return layered_analyzer
 
 # Initialize persistent history storage
 history_storage = AnalysisHistoryStorage()
+
+
 
 
 def derive_verdict(score, classification, risks, ml_analysis_result=None):
@@ -160,16 +172,17 @@ def derive_confidence(score, classification, risks):
     # Malicious / Phishing: higher score + more agreeing engines => higher confidence
     return float(min(100.0, max(score, 50.0) + 5.0 * max(0, engines_triggered - 1)))
 
-def run_analysis(url, include_layered_analysis=False, use_combined_analysis=False):
+async def run_analysis(url, include_layered_analysis=False, use_combined_analysis=False):
     # If combined analysis is requested, use the new combined approach
     if use_combined_analysis:
-        result = analyze_url_combined(url)
+        # Combined analysis is now async
+        result = await analyze_url_combined(url)
         if isinstance(result, tuple):
             return result  # Return error tuple if invalid URL
         
         # Include layered analysis if also requested
         if include_layered_analysis and 'layered_analysis' not in result:
-            layered_result = layered_analyzer.analyze_url(url)
+            layered_result = await asyncio.to_thread(get_layered_analyzer().analyze_url, url)
             result['layered_analysis'] = layered_result
         
         return result
@@ -200,50 +213,62 @@ def run_analysis(url, include_layered_analysis=False, use_combined_analysis=Fals
         
         # Include layered analysis if requested
         if include_layered_analysis:
-            layered_result = layered_analyzer.analyze_url(url)
+            layered_result = await asyncio.to_thread(get_layered_analyzer().analyze_url, url)
             result['layered_analysis'] = layered_result
         
         return result
     
     risks = {}
-    threads = []
     soup_object = None
     
-    def thread_lexical():
-        risks['lexical'] = lexical_risk(url)
+    # Define async wrappers for synchronous functions
+    async def run_lexical():
+        return 'lexical', await asyncio.to_thread(lexical_risk, url)
     
-    def thread_domain():
-        risks['domain'] = domain_risk(parsed.netloc)
-    
-    def thread_ssl():
-        risks['ssl'] = ssl_risk(url)
-    
-    def thread_content():
-        # Capture soup object for advanced analysis
-        nonlocal soup_object
-        result = content_risk(url)
-        risks['content'] = result
-        # Try to get soup object from content_analyzer if available
+    async def run_domain():
+        return 'domain', await asyncio.to_thread(domain_risk, parsed.netloc)
+        
+    async def run_ssl():
+        return 'ssl', await asyncio.to_thread(ssl_risk, url)
+        
+    async def run_content():
+        # content_risk is now async
         try:
+            result = await content_risk(url)
+            # Try to get soup object from content_analyzer if available
+            # Note: with async and Quart, global state is tricky, but we follow existing pattern
             from modules.content_analyzer import get_last_soup
+            nonlocal soup_object
             soup_object = get_last_soup()
-        except:
-            pass
+            return 'content', result
+        except Exception as e:
+            return 'content_error', (0, [('Content Analysis Failed', 0, str(e))])
+
+    async def run_ai():
+        return 'ai_analysis', await asyncio.to_thread(get_ai_detector().analyze, url)
+
+    # Execute all checks in parallel
+    results = await asyncio.gather(
+        run_lexical(),
+        run_domain(),
+        run_ssl(),
+        run_content(),
+        run_ai(),
+        return_exceptions=True
+    )
     
-    def thread_ai():
-        risks['ai_analysis'] = ai_detector.analyze(url)
-    
-    for func in [thread_lexical, thread_domain, thread_ssl, thread_content, thread_ai]:
-        t = threading.Thread(target=func)
-        t.start()
-        threads.append(t)
-    
-    for t in threads:
-        t.join(timeout=app.config['ANALYSIS_TIMEOUT'])
+    # Process results
+    for res in results:
+        if isinstance(res, tuple) and len(res) == 2:
+            key, val = res
+            risks[key] = val
+        elif isinstance(res, Exception):
+            print(f"Analysis task failed: {res}")
     
     # Run advanced feature analysis
     try:
-        advanced_results = perform_advanced_analysis(url, soup_object, risks)
+        # Run in thread as it might be CPU intensive
+        advanced_results = await asyncio.to_thread(perform_advanced_analysis, url, soup_object, risks)
         # Merge advanced results into main risks
         risks.update(advanced_results)
     except Exception as e:
@@ -252,7 +277,7 @@ def run_analysis(url, include_layered_analysis=False, use_combined_analysis=Fals
     
     # Run malicious file detection
     try:
-        risks['malicious_file'] = malicious_file_risk(url)
+        risks['malicious_file'] = await asyncio.to_thread(malicious_file_risk, url)
     except Exception as e:
         # If malicious file detection fails, continue with analysis
         risks['malicious_file_error'] = (0, [('Malicious File Detection Error', 0, str(e)[:50])])
@@ -275,9 +300,11 @@ def run_analysis(url, include_layered_analysis=False, use_combined_analysis=Fals
                 classification = 'Malicious'  # Override classification
     
     # Also run ML analysis for comparison and potential override
+    # Also run ML analysis for comparison and potential override
     try:
         from modules.ml_model import ml_risk
-        ml_score, ml_details = ml_risk(url)
+        # Run ML inference in thread
+        ml_score, ml_details = await asyncio.to_thread(ml_risk, url)
         # Extract ML prediction and confidence if available
         ml_prediction = 'Benign'
         ml_confidence = 0.5
@@ -311,52 +338,70 @@ def run_analysis(url, include_layered_analysis=False, use_combined_analysis=Fals
     
     # Include layered analysis if requested
     if include_layered_analysis:
-        layered_result = layered_analyzer.analyze_url(url)
+        layered_result = await asyncio.to_thread(layered_analyzer.analyze_url, url)
         result['layered_analysis'] = layered_result
     
     return result
 
 @app.route('/', methods=['GET', 'POST'])
-def index():
+async def index():
     chart_data = []
+    
+    # Get recent history for sidebar/feed (last 5 entries)
+    # The new UI depends on this list of dicts.
+    all_history = history_storage.get_all_history()
+    recent_history = all_history[:5]
+    
     if request.method == 'POST':
-        url = request.form['url']
-        include_layered = 'include_layered_analysis' in request.form
-        use_combined = 'use_combined_analysis' in request.form
+        form = await request.form
+        url = form['url']
+        include_layered = 'include_layered_analysis' in form
+        use_combined = 'use_combined_analysis' in form
         
-        result = run_analysis(url, include_layered_analysis=include_layered, use_combined_analysis=use_combined)
+        result = await run_analysis(url, include_layered_analysis=include_layered, use_combined_analysis=use_combined)
         if isinstance(result, tuple):
             result = result[0]  # Handle error tuple ({'error':...}, 400)
         else:
             # Save to history
             history_storage.add_analysis(url, result)
             chart_data = [item['weighted'] for item in result['breakdown'].values()]
-        return render_template('index.html', 
+            chart_labels = list(result['breakdown'].keys())
+            
+            # Refresh history after new add
+            all_history = history_storage.get_all_history()
+            recent_history = all_history[:5]
+            
+        return await render_template('index.html', 
                                result=result, 
                                url=url, 
-                               chart_data=chart_data, 
+                               chart_data=chart_data,
+                               chart_labels=chart_labels,
                                include_layered_analysis=include_layered,
-                               use_combined_analysis=use_combined)
-    return render_template('index.html', chart_data=chart_data)
+                               use_combined_analysis=use_combined,
+                               recent_history=recent_history)
+                               
+    return await render_template('index.html', chart_data=chart_data, recent_history=recent_history)
 
 @app.route('/analyze', methods=['POST'])
-def api_analyze():
-    url = request.json['url']
-    include_layered = request.json.get('include_layered_analysis', False)
-    use_combined = request.json.get('use_combined_analysis', False)
+async def api_analyze():
+    data = await request.get_json()
+    url = data['url']
+    include_layered = data.get('include_layered_analysis', False)
+    use_combined = data.get('use_combined_analysis', False)
     
-    result = run_analysis(url, include_layered_analysis=include_layered, use_combined_analysis=use_combined)
+    result = await run_analysis(url, include_layered_analysis=include_layered, use_combined_analysis=use_combined)
     if not isinstance(result, tuple):  # Not an error
         history_storage.add_analysis(url, result)
     return jsonify(result)
 
 @app.route('/healthz')
-def health_check():
+async def health_check():
     """Health check endpoint for deployment."""
-    return jsonify({'status': 'healthy', 'components': {'ai': ai_detector.rag_enabled}}), 200
+    # Robust check that doesn't trigger heavy loading
+    return jsonify({'status': 'healthy', 'mode': 'titan_async', 'version': '1.0'}), 200
 
 @app.route('/history')
-def history():
+async def history():
     """Display analysis history page."""
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -371,7 +416,7 @@ def history():
     
     stats = history_storage.get_statistics()
     
-    return render_template('history.html', 
+    return await render_template('history.html', 
                           history=page_history, 
                           stats=stats,
                           page=page,
@@ -381,21 +426,21 @@ def history():
 
 
 @app.route('/history/<entry_id>')
-def history_detail(entry_id):
+async def history_detail(entry_id):
     """Display detailed view of a specific analysis."""
     entry = history_storage.get_by_id(entry_id)
     if not entry:
-        return render_template('error.html', message='Analysis not found'), 404
+        return await render_template('error.html', message='Analysis not found'), 404
     
     # Prepare chart data
     chart_data = []
     if 'breakdown' in entry:
         chart_data = [item.get('weighted', 0) for item in entry['breakdown'].values()]
     
-    return render_template('history_detail.html', entry=entry, chart_data=chart_data)
+    return await render_template('history_detail.html', entry=entry, chart_data=chart_data)
 
 @app.route('/history/search')
-def history_search():
+async def history_search():
     """Search history with filters."""
     query = request.args.get('q', '')
     verdict = request.args.get('verdict', None)
@@ -411,7 +456,7 @@ def history_search():
     
     stats = history_storage.get_statistics()
     
-    return render_template('history.html', 
+    return await render_template('history.html', 
                           history=results, 
                           stats=stats,
                           search_query=query,
@@ -421,13 +466,13 @@ def history_search():
                           total=len(results))
 
 @app.route('/history/clear', methods=['POST'])
-def clear_history():
+async def clear_history():
     """Clear all analysis history."""
     history_storage.clear_history()
     return redirect(url_for('history'))
 
 @app.route('/history/delete/<entry_id>', methods=['POST'])
-def delete_history_entry(entry_id):
+async def delete_history_entry(entry_id):
     """Delete a specific history entry."""
     history_storage.delete_entry(entry_id)
     return redirect(url_for('history'))

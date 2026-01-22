@@ -4,63 +4,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>URL Sentinel AI | Threat Detection Unit</title>
-
-    <!-- Fonts -->
+    <title>{% block title %}URL Sentinel | Titan Edition{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="icon" href="https://img.icons8.com/fluency/48/globe.png" type="image/x-icon">
+    <!-- Premium Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap"
         rel="stylesheet">
+    <!-- Titan Design System -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/titan-core.css') }}">
 
-    <!-- Bootstrap & Custom Styles -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/cyber-theme.css') }}">
-
+    <!-- 3D & Animation Engines (Phase 6) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-    <!-- Scanline Overlay -->
-    <div class="scan-overlay">
-        <div class="scan-line"></div>
-    </div>
-
-    <nav class="navbar navbar-expand-lg border-bottom"
-        style="background: rgba(10, 10, 18, 0.9); border-color: rgba(0, 243, 255, 0.1) !important;">
-        <div class="container">
-            <a class="navbar-brand text-neon-blue font-mono" href="{{ url_for('index') }}">
-                [URL_SENTINEL_AI]
-            </a>
-            <button class="navbar-toggler bg-secondary" type="button" data-bs-toggle="collapse"
-                data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link text-light font-mono" href="{{ url_for('index') }}">>_ ANALYZE</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-light font-mono" href="{{ url_for('history') }}">>_ LOGS</a>
-                    </li>
-                </ul>
+    <div class="titan-layout">
+        <!-- Sidebar -->
+        <aside class="titan-sidebar">
+            <div class="titan-logo">
+                <a href="/" class="titan-brand">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                    </svg>
+                    SENTINEL
+                </a>
             </div>
-        </div>
-    </nav>
 
-    <div class="container mt-5 mb-5 ps-3 pe-3">
-        {% block content %}{% endblock %}
+            <nav>
+                <div class="titan-nav-item">
+                    <a href="{{ url_for('index') }}"
+                        class="titan-nav-link {{ 'active' if request.endpoint == 'index' }}">
+                        <span>DASHBOARD</span>
+                    </a>
+                </div>
+                <div class="titan-nav-item">
+                    <a href="{{ url_for('history') }}"
+                        class="titan-nav-link {{ 'active' if request.endpoint == 'history' }}">
+                        <span>INTELLIGENCE</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div
+                style="margin-top: auto; padding-top: 20px; border-top: var(--glass-border); font-size: 11px; color: var(--text-muted);">
+                <div style="margin-bottom: 5px;">SYSTEM STATUS</div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                    <div style="width: 8px; height: 8px; background: var(--neon-green); border-radius: 50%;"></div>
+                    <span>ONLINE</span>
+                </div>
+                <div>v3.0.0 TITAN</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="titan-main">
+            <!-- Content Injection -->
+            {% block content %}{% endblock %}
+
+            <!-- Footer -->
+            <footer>
+                <p>TITAN EDGE DEFENSE • HYPERSONIC ZERO ARCHITECTURE</p>
+            </footer>
+        </main>
     </div>
-
-    <footer class="text-center mt-5 py-3 text-secondary border-top"
-        style="border-color: rgba(0, 243, 255, 0.1) !important;">
-        <small class="font-mono">URL SENTINEL V2.0 // NEXT-GEN THREAT INTELLIGENCE // RESEARCH PROTOCOL ACTIVE</small>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/cyber-agent.js') }}"></script>
-    {% block scripts %}{% endblock %}
 </body>
 
 </html>
