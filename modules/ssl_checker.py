@@ -356,4 +356,37 @@ def ssl_risk(target):
                 risks.append(('SSL Handshake Failed', weight, f'TLS connection issue: {str(e)[:50]}'))
                 score += weight
 
+    # --- TITAN-TIER: Certificate Intelligence (Layer 2+) ---
+    # 1. Certificate Transparency (CT) Log Check (Simulated for Phase 1/2)
+    # Real implementation would query crt.sh or Google CT logs
+    # Absence from CT logs is highly suspicious for public CAs
+    # For now, we assume standard CAs are in CT. If we had the raw cert, we'd check SCTs.
+    # Placeholder Logic:
+    # if not cert.get('scts'): 
+    #    risks.append(('CT Log Void', 90, 'Certificate not found in public Transparency Logs'))
+    #    score += 90
+
+    # 2. "Let's Encrypt" Abuse Pattern
+    # Free certs are often used by phishers. High risk if:
+    # - Issuer is Let's Encrypt (or other free CA)
+    # - AND Cert is very new (< 24 hours)
+    # - AND Domain contains high-value keywords (bank, login, secure)
+    
+    issuer_name = ''
+    if 'issuer' in locals() and issuer:
+         # Extract Organization/Common Name from issuer dict
+         issuer_name = issuer.get('organizationName', '') or issuer.get('commonName', '')
+    
+    # List of free/automated CAs often abused
+    free_cas = ['Let\'s Encrypt', 'cPanel', 'Cloudflare', 'ZeroSSL']
+    
+    if any(ca.lower() in issuer_name.lower() for ca in free_cas):
+        # Check cert age
+        if 'cert_age' in locals() and cert_age < 1: # Less than 24 hours old
+             # Check for high-value targets in hostname
+             high_value_keywords = ['bank', 'login', 'secure', 'account', 'update', 'verify', 'paypal', 'apple', 'microsoft']
+             if any(kw in host.lower() for kw in high_value_keywords):
+                 risks.append(('Let\'s Encrypt Abuse', 50, f'New free certificate (<24h) on high-value domain: {host}'))
+                 score += 50
+
     return score, risks

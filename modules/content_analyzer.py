@@ -335,3 +335,53 @@ async def content_risk(url):
     score = min(100, score)
     
     return score, risks
+
+async def check_behavioral_evasion(url, text_content):
+    """
+    Titan-Tier: Detects scripts and techniques used to evade analysis.
+    """
+    risks = []
+    score = 0
+    text_lower = text_content.lower()
+    
+    # 1. User-Agent Cloaking Signatures
+    # Analysis of scripts that check navigator.userAgent
+    ua_checks = ['navigator.useragent', 'window.navigator', 'iphone', 'android', 'mobile']
+    if sum(1 for x in ua_checks if x in text_lower) >= 3:
+         risks.append(('User-Agent Cloaking Risk', 45, 'Scripts analyzing User-Agent excessively (potential cloaking)'))
+         score += 45
+
+    # 2. Mouse-Tracking Evasion
+    # Malicious sites often wait for mouse movement to decode payload
+    mouse_events = ['mousemove', 'mousedown', 'mouseup', 'mouseover']
+    if sum(1 for x in mouse_events if x in text_lower) >= 2 and 'on' in text_lower:
+         risks.append(('Mouse-Tracking Evasion', 60, 'Potential mouse-tracking anti-analysis script detected'))
+         score += 60
+         
+    # 3. Time-Zone Analysis (Contextual)
+    # Check for scripts accessing time zone offsets
+    if 'gettimezoneoffset' in text_lower or 'intl.datetimeformat' in text_lower:
+        risks.append(('Time-Zone Profiling', 30, 'Script profiling user time-zone'))
+        score += 30
+
+    return score, risks
+
+async def check_steganography(soup):
+    """
+    Titan-Tier: Checks for potential steganography in images (Payloads in pixels).
+    """
+    risks = []
+    score = 0
+    
+    # Heuristic: Check for large inline base64 images or suspicious image attributes
+    images = soup.find_all('img')
+    for img in images:
+        src = img.get('src', '')
+        if src.startswith('data:image'):
+            # Check length of base64 string
+            if len(src) > 50000: # >50KB inline image
+                risks.append(('Large Inline Image (Stego Risk)', 40, 'Large base64 inline image detected, potential steganography container'))
+                score += 40
+                break # Only flag once
+    
+    return score, risks
